@@ -414,7 +414,13 @@
     <section id="view-postflop" class="hidden space-y-4">
       <div class="rounded-2xl bg-slate-900/90 border border-slate-800 p-3.5 flex flex-wrap items-center justify-between gap-3">
         <div class="flex flex-wrap items-center gap-2">
-          <label for="post-filter-street" class="text-xs text-slate-400 font-medium">Street:</label>
+          <button type="button" id="btn-post-gen-infinite" onclick="setPostflopSource('infinite')" class="px-3 py-1.5 rounded-lg text-xs font-bold transition bg-emerald-500 text-slate-950">
+            ♾️ Gerador Infinito (Ao Vivo)
+          </button>
+          <button type="button" id="btn-post-gen-classic" onclick="setPostflopSource('classic')" class="px-3 py-1.5 rounded-lg text-xs font-bold transition bg-slate-950 text-slate-300 border border-slate-700">
+            📚 Cenários Clássicos
+          </button>
+          <label for="post-filter-street" class="text-xs text-slate-400 font-medium ml-1">Street:</label>
           <select id="post-filter-street" onchange="dealPostflopHand()" class="bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-white focus:outline-none focus:border-emerald-500">
             <option value="ALL">Todas (Flop, Turn e River)</option>
             <option value="Flop">Apenas Flop</option>
@@ -1147,7 +1153,7 @@
         street: 'Turn', matchup: 'BTN vs BB', pot: '12.0 bb',
         context: 'Você apostou no flop K♠ 8♦ 3♣ e o BB pagou. O turn traz o 2♥ e o BB pede mesa (Check).',
         board: ['Ks', '8d', '3c', '2h'], hero: ['Ah', 'Kd'],
-        options: ['Pedir Mesa (Check)', 'Apostar 8.5 bb (~70% Pote)', 'Desistir'],
+        options: ['Pedir Mesa (Check)', 'Apostar 8.5 bb (~70% Pote)', 'Overbet All-in (88 bb)'],
         correctIdx: 1,
         explanation: 'Com Top Pair Top Kicker (TPTK) em um bordo totalmente seco, você tem facilmente 3 ruas de valor contra reis piores (KQ, KJ, KT) e pares médios. No turn, use um size maior (~70% do pote) para construir o pote antes do river.'
       },
@@ -1209,6 +1215,7 @@
         sessionCorrect: 0
       },
       postflop: {
+        source: 'infinite',
         current: null,
         answered: false,
         sessionPlayed: 0,
@@ -1802,7 +1809,7 @@
     }
 
     // =========================================================================
-    // 10. POSTFLOP SIMULATOR LOGIC
+    // 10. POSTFLOP SIMULATOR LOGIC (PROCEDURAL INFINITE GENERATOR + CLASSICS)
     // =========================================================================
     function permuteSuits(codes) {
       const perm = shuffleArray(['s', 'h', 'd', 'c']);
@@ -1810,27 +1817,352 @@
       return codes.map(c => c[0] + map[c[1]]);
     }
 
+    function setPostflopSource(srcMode) {
+      state.postflop.source = srcMode;
+      document.getElementById('btn-post-gen-infinite').className = 'px-3 py-1.5 rounded-lg text-xs font-bold transition ' +
+        (srcMode === 'infinite' ? 'bg-emerald-500 text-slate-950' : 'bg-slate-950 text-slate-300 border border-slate-700');
+      document.getElementById('btn-post-gen-classic').className = 'px-3 py-1.5 rounded-lg text-xs font-bold transition ' +
+        (srcMode === 'classic' ? 'bg-emerald-500 text-slate-950' : 'bg-slate-950 text-slate-300 border border-slate-700');
+      dealPostflopHand();
+    }
+
+    function has5CardStraightInRanks(rankSet) {
+      for (let hi = 14; hi >= 5; hi--) {
+        if (hi === 5) {
+          if (rankSet.has(14) && rankSet.has(2) && rankSet.has(3) && rankSet.has(4) && rankSet.has(5)) return true;
+        } else {
+          if (rankSet.has(hi) && rankSet.has(hi - 1) && rankSet.has(hi - 2) && rankSet.has(hi - 3) && rankSet.has(hi - 4)) return true;
+        }
+      }
+      return false;
+    }
+
+    function analyzePostflopDrawsAndBoard(boardCards, heroCards, evalHero) {
+      const suitCounts = { s: 0, h: 0, d: 0, c: 0 };
+      const boardSuitCounts = { s: 0, h: 0, d: 0, c: 0 };
+      const boardRankCounts = {};
+      boardCards.forEach(c => {
+        suitCounts[c.suit]++;
+        boardSuitCounts[c.suit]++;
+        boardRankCounts[c.rank] = (boardRankCounts[c.rank] || 0) + 1;
+      });
+      heroCards.forEach(c => { suitCounts[c.suit]++; });
+
+      const maxBoardSuit = Math.max(boardSuitCounts.s, boardSuitCounts.h, boardSuitCounts.d, boardSuitCounts.c);
+      const maxBoardFreq = Math.max(...Object.values(boardRankCounts));
+      const sortedBoardRanks = boardCards.map(c => c.rank).sort((a, b) => b - a);
+      const isConnected = (sortedBoardRanks[0] - sortedBoardRanks[Math.min(2, sortedBoardRanks.length - 1)]) <= 4;
+
+      let textureDesc = 'seco (rainbow)';
+      if (maxBoardSuit >= 3) textureDesc = 'monotone (3+ cartas do mesmo naipe)';
+      else if (maxBoardFreq >= 2) textureDesc = 'pareado';
+      else if (maxBoardSuit === 2 && isConnected) textureDesc = 'molhado (conectado e com flush draw)';
+      else if (maxBoardSuit === 2) textureDesc = 'two-tone (com possibilidade de flush draw)';
+      else if (isConnected) textureDesc = 'conectado para sequências';
+
+      let flushOuts = 0;
+      let straightOuts = 0;
+      if (boardCards.length < 5) {
+        for (const s of ['s', 'h', 'd', 'c']) {
+          if (suitCounts[s] === 4 && (heroCards[0].suit === s || heroCards[1].suit === s)) {
+            flushOuts = 9;
+          }
+        }
+        if (evalHero.category < 4) {
+          const baseRanks = new Set([...boardCards.map(c => c.rank), ...heroCards.map(c => c.rank)]);
+          if (!has5CardStraightInRanks(baseRanks)) {
+            let completingRanks = 0;
+            for (let r = 2; r <= 14; r++) {
+              if (!baseRanks.has(r)) {
+                const testSet = new Set(baseRanks);
+                testSet.add(r);
+                if (has5CardStraightInRanks(testSet)) completingRanks++;
+              }
+            }
+            if (completingRanks >= 2) straightOuts = 8;
+            else if (completingRanks === 1) straightOuts = 4;
+          }
+        }
+      }
+
+      let totalDrawOuts = flushOuts + straightOuts;
+      if (flushOuts === 9 && straightOuts > 0) totalDrawOuts -= Math.round(straightOuts / 4);
+
+      let drawLabel = '';
+      if (flushOuts === 9 && straightOuts >= 4) drawLabel = `Combo Draw (${totalDrawOuts} outs)`;
+      else if (flushOuts === 9) drawLabel = 'Flush Draw (9 outs)';
+      else if (straightOuts === 8) drawLabel = 'Sequência Duas Pontas — OESD (8 outs)';
+      else if (straightOuts === 4) drawLabel = 'Gutshot (4 outs)';
+
+      const isMonster = (evalHero.category >= 4) ||
+        (evalHero.category === 3 && maxBoardFreq < 3) ||
+        (evalHero.category === 2 && maxBoardFreq < 2);
+
+      return { textureDesc, maxBoardSuit, maxBoardFreq, isConnected, flushOuts, straightOuts, totalDrawOuts, drawLabel, isMonster };
+    }
+
+    function estimatePostflopRangeEquity(boardCards, heroCards, villainRangeSet) {
+      const used = new Set([...boardCards.map(c => c.code), ...heroCards.map(c => c.code)]);
+      const fullDeck = makeFullDeck().filter(c => !used.has(c.code));
+      const notations = Array.from(villainRangeSet);
+      const needed = 5 - boardCards.length;
+
+      let wins = 0, ties = 0, samples = 0;
+      const targetSamples = 110;
+      let guard = 0;
+
+      while (samples < targetSamples && guard < 450) {
+        guard++;
+        const not = notations[Math.floor(Math.random() * notations.length)];
+        const vCodes = pickCardsForNotation(not);
+        if (used.has(vCodes[0]) || used.has(vCodes[1])) continue;
+        const v0 = cardFromCode(vCodes[0]);
+        const v1 = cardFromCode(vCodes[1]);
+
+        let simBoard = boardCards;
+        if (needed > 0) {
+          const pool = fullDeck.filter(c => c.code !== vCodes[0] && c.code !== vCodes[1]);
+          for (let k = 0; k < needed; k++) {
+            const rIdx = k + Math.floor(Math.random() * (pool.length - k));
+            const tmp = pool[k];
+            pool[k] = pool[rIdx];
+            pool[rIdx] = tmp;
+          }
+          simBoard = boardCards.concat(pool.slice(0, needed));
+        }
+
+        const eh = evaluateBestHand([...simBoard, ...heroCards]);
+        const ev = evaluateBestHand([...simBoard, v0, v1]);
+        samples++;
+        if (eh.score > ev.score) wins++;
+        else if (eh.score === ev.score) ties++;
+      }
+
+      if (samples === 0) return 50;
+      return ((wins + ties * 0.5) / samples) * 100;
+    }
+
+    function generateProceduralPostflopSpot(streetFilter) {
+      const matchups = [
+        { matchup: 'BTN vs BB', heroPos: 'BTN', vilPos: 'BB', heroIP: true, heroRange: PREFLOP_SCENARIOS.BTN_RFI.raise, vilRange: PREFLOP_SCENARIOS.BB_vs_BTN.call },
+        { matchup: 'BB vs BTN', heroPos: 'BB', vilPos: 'BTN', heroIP: false, heroRange: PREFLOP_SCENARIOS.BB_vs_BTN.call, vilRange: PREFLOP_SCENARIOS.BTN_RFI.raise },
+        { matchup: 'CO vs BB', heroPos: 'CO', vilPos: 'BB', heroIP: true, heroRange: PREFLOP_SCENARIOS.CO_RFI.raise, vilRange: PREFLOP_SCENARIOS.BB_vs_BTN.call },
+        { matchup: 'BTN vs LJ', heroPos: 'BTN', vilPos: 'LJ', heroIP: true, heroRange: PREFLOP_SCENARIOS.BTN_vs_LJ.call, vilRange: PREFLOP_SCENARIOS.LJ_RFI.raise }
+      ];
+      const streets = streetFilter === 'ALL' ? ['Flop', 'Turn', 'River'] : [streetFilter];
+
+      for (let attempt = 0; attempt < 40; attempt++) {
+        const m = matchups[Math.floor(Math.random() * matchups.length)];
+        const street = streets[Math.floor(Math.random() * streets.length)];
+        const boardLen = street === 'Flop' ? 3 : (street === 'Turn' ? 4 : 5);
+        const basePot = street === 'Flop' ? 5.5 : (street === 'Turn' ? 12.0 : 24.0);
+
+        const heroNotations = Array.from(m.heroRange);
+        const chosenNotation = heroNotations[Math.floor(Math.random() * heroNotations.length)];
+        const hero = pickCardsForNotation(chosenNotation);
+        const usedHero = new Set(hero);
+        const remDeck = shuffleArray(makeFullDeck().filter(c => !usedHero.has(c.code)));
+        const board = remDeck.slice(0, boardLen).map(c => c.code);
+
+        const boardCards = board.map(cardFromCode);
+        const heroCards = hero.map(cardFromCode);
+        const evalHero = evaluateBestHand([...boardCards, ...heroCards]);
+        const info = analyzePostflopDrawsAndBoard(boardCards, heroCards, evalHero);
+        const eqPct = estimatePostflopRangeEquity(boardCards, heroCards, m.vilRange);
+        const eqRound = Math.round(eqPct);
+
+        const facingBet = !m.heroIP || Math.random() < 0.55;
+
+        if (facingBet) {
+          const sizings = [
+            { pct: 33, mult: 0.33, reqEq: 20.0 },
+            { pct: 50, mult: 0.50, reqEq: 25.0 },
+            { pct: 75, mult: 0.75, reqEq: 30.0 },
+            { pct: 100, mult: 1.00, reqEq: 33.3 }
+          ];
+          const sz = sizings[Math.floor(Math.random() * sizings.length)];
+          const betBb = Number((basePot * sz.mult).toFixed(1));
+          const potAfterBet = Number((basePot + betBb).toFixed(1));
+          const raiseBb = Number((betBb * 3).toFixed(1));
+
+          // Archetype 1: Monster Value Raise
+          if (info.isMonster && eqPct >= 78 && (info.maxBoardSuit >= 2 || info.isConnected || street === 'River')) {
+            return {
+              street,
+              matchup: m.matchup,
+              pot: `${potAfterBet} bb`,
+              board,
+              hero,
+              context: `Pote de ${basePot} bb (${m.matchup}). No ${street}, ${m.vilPos} aposta ${betBb} bb (${sz.pct}% do pote). A ação está com você no ${m.heroPos}.`,
+              options: [
+                'Desistir (Fold)',
+                `Apenas Pagar ${betBb} bb`,
+                `Aumentar por Valor (${raiseBb} bb)`
+              ],
+              correctIdx: 2,
+              explanation: `Com ${evalHero.categoryName} e ~${eqRound}% de equidade estimada contra o range do ${m.vilPos} em bordo ${info.textureDesc}, aumentar para ${raiseBb} bb extrai valor máximo de pares fortes/draws e protege contra cartas que travam a ação.`
+            };
+          }
+
+          // Archetype 2: Clear Profitable Call (+EV)
+          if (!info.isMonster && eqPct >= sz.reqEq + 8 && eqPct <= 66) {
+            const reasonExtra = info.drawLabel ? ` somado ao seu ${info.drawLabel}` : '';
+            return {
+              street,
+              matchup: m.matchup,
+              pot: `${potAfterBet} bb`,
+              board,
+              hero,
+              context: `Pote de ${basePot} bb (${m.matchup}). No ${street}, ${m.vilPos} aposta ${betBb} bb (${sz.pct}% do pote). Você precisa de ${sz.reqEq}% de equidade para pagar.`,
+              options: [
+                'Desistir (Fold)',
+                `Pagar ${betBb} bb (Call +EV)`,
+                'Ir All-in Direto (100 bb)'
+              ],
+              correctIdx: 1,
+              explanation: `Contra uma aposta de ${sz.pct}% do pote, suas Pot Odds exigem ${sz.reqEq}% de equidade. Sua mão (${evalHero.categoryName}${reasonExtra}) tem ~${eqRound}% de equidade contra o range do ${m.vilPos} — tornando o Call claramente lucrativo (+EV), sem inflar o pote contra o topo do range dele.`
+            };
+          }
+
+          // Archetype 3: Clear Disciplined Fold (-EV)
+          if (eqPct <= sz.reqEq - 7 && info.totalDrawOuts <= 4) {
+            return {
+              street,
+              matchup: m.matchup,
+              pot: `${potAfterBet} bb`,
+              board,
+              hero,
+              context: `Pote de ${basePot} bb (${m.matchup}). No ${street}, ${m.vilPos} aposta ${betBb} bb (${sz.pct}% do pote) em um bordo ${info.textureDesc}.`,
+              options: [
+                'Desistir (Fold Disciplinado)',
+                `Pagar ${betBb} bb sem odds`,
+                `Aumentar para ${raiseBb} bb sem equidade`
+              ],
+              correctIdx: 0,
+              explanation: `Para pagar ${betBb} bb (${sz.pct}% do pote) você precisaria de pelo menos ${sz.reqEq}% de equidade, mas sua mão (${evalHero.categoryName}${info.drawLabel ? ', ' + info.drawLabel : ''}) possui apenas ~${eqRound}% contra o range do ${m.vilPos}. O Fold economiza fichas valiosas.`
+            };
+          }
+        } else {
+          // Checked to Hero In Position
+          const bet66 = Number((basePot * 0.66).toFixed(1));
+          const bet33 = Number((basePot * 0.33).toFixed(1));
+
+          // Archetype 4: Clear Value Bet IP
+          if (eqPct >= 68) {
+            return {
+              street,
+              matchup: m.matchup,
+              pot: `${basePot} bb`,
+              board,
+              hero,
+              context: `Pote de ${basePot} bb (${m.matchup}). No ${street}, ${m.vilPos} pede mesa (Check) e você age em posição no ${m.heroPos}.`,
+              options: [
+                'Pedir Mesa (Perder rua de valor)',
+                `Apostar por Valor (${bet66} bb)`,
+                'Ir All-in Overbet (97 bb)'
+              ],
+              correctIdx: 1,
+              explanation: `Em posição com ${evalHero.categoryName} e excelente equidade (~${eqRound}% contra o range do ${m.vilPos}) em bordo ${info.textureDesc}, aposte ${bet66} bb (~66% do pote) para construir o pote e extrair valor de mãos piores e draws.`
+            };
+          }
+
+          // Archetype 5: Semi-bluff / High-equity Draw C-bet IP on Flop/Turn
+          if (street !== 'River' && info.totalDrawOuts >= 8 && eqPct >= 36 && eqPct <= 60) {
+            return {
+              street,
+              matchup: m.matchup,
+              pot: `${basePot} bb`,
+              board,
+              hero,
+              context: `Pote de ${basePot} bb (${m.matchup}). No ${street}, ${m.vilPos} pede mesa (Check) em bordo ${info.textureDesc}.`,
+              options: [
+                'Pedir Mesa sempre',
+                `Apostar em Semi-Blefe (${bet66} bb)`,
+                'Ir All-in Overbet (97 bb)'
+              ],
+              correctIdx: 1,
+              explanation: `Você tem um forte ${info.drawLabel} (~${eqRound}% de equidade). Apostar em posição combina Fold Equity imediata (fazendo mãos marginais desistirem agora) com ótimas chances de acertar os nuts nas próximas cartas.`
+            };
+          }
+
+          // Archetype 6: Pot Control / Check Back Medium Showdown Value
+          if (evalHero.category === 1 && eqPct >= 36 && eqPct <= 55 && info.totalDrawOuts === 0) {
+            return {
+              street,
+              matchup: m.matchup,
+              pot: `${basePot} bb`,
+              board,
+              hero,
+              context: `Pote de ${basePot} bb (${m.matchup}). No ${street}, ${m.vilPos} pede mesa (Check) até você no ${m.heroPos}.`,
+              options: [
+                'Pedir Mesa (Check — Controle de Pote)',
+                `Apostar Pote Cheio (${basePot} bb)`,
+                'Ir All-in Overbet (97 bb)'
+              ],
+              correctIdx: 0,
+              explanation: `Sua mão (${evalHero.categoryName}) tem valor médio de showdown (~${eqRound}% de equidade contra o range do ${m.vilPos}) e nenhum draw forte. Apostar pesado isola você contra mãos melhores e expulsa blefes; dar Check Back controla o pote e realiza sua equidade.`
+            };
+          }
+        }
+      }
+
+      // Guaranteed fallback from classic bank with suit permutation if 40 random rolls hit narrow borders
+      const fallbackPool = POSTFLOP_BANK.filter(x => streetFilter === 'ALL' || x.street === streetFilter);
+      const base = fallbackPool[Math.floor(Math.random() * fallbackPool.length)];
+      const perm = permuteSuits([...base.board, ...base.hero]);
+      return {
+        street: base.street,
+        matchup: base.matchup,
+        pot: base.pot,
+        board: perm.slice(0, base.board.length),
+        hero: perm.slice(base.board.length),
+        context: base.context,
+        options: base.options.slice(),
+        correctIdx: base.correctIdx,
+        explanation: base.explanation
+      };
+    }
+
     function dealPostflopHand(forced) {
       state.postflop.answered = false;
       document.getElementById('post-feedback').classList.add('hidden');
 
-      let baseIdx;
-      if (forced && typeof forced.bankIdx === 'number') {
-        baseIdx = forced.bankIdx;
-      } else {
+      let item, board, hero, sig;
+      if (forced && forced.customSpot) {
+        item = forced.customSpot;
+        board = item.board;
+        hero = item.hero;
+        sig = forced.sig || `post:proc:${board.join('')}:${hero.join('')}`;
+      } else if (forced && typeof forced.bankIdx === 'number') {
+        const base = POSTFLOP_BANK[forced.bankIdx];
+        const allPermuted = permuteSuits([...base.board, ...base.hero]);
+        board = allPermuted.slice(0, base.board.length);
+        hero = allPermuted.slice(base.board.length);
+        item = base;
+        sig = `post:bank:${forced.bankIdx}`;
+      } else if (state.postflop.source === 'classic') {
         const streetFilter = document.getElementById('post-filter-street').value;
         const indices = POSTFLOP_BANK.map((_, i) => i).filter(i => streetFilter === 'ALL' || POSTFLOP_BANK[i].street === streetFilter);
-        baseIdx = indices[Math.floor(Math.random() * indices.length)];
+        const baseIdx = indices[Math.floor(Math.random() * indices.length)];
+        const base = POSTFLOP_BANK[baseIdx];
+        const allPermuted = permuteSuits([...base.board, ...base.hero]);
+        board = allPermuted.slice(0, base.board.length);
+        hero = allPermuted.slice(base.board.length);
+        item = base;
+        sig = `post:bank:${baseIdx}`;
+      } else {
+        const streetFilter = document.getElementById('post-filter-street').value;
+        item = generateProceduralPostflopSpot(streetFilter);
+        board = item.board;
+        hero = item.hero;
+        sig = `post:proc:${board.join('')}:${hero.join('')}`;
       }
-      const item = POSTFLOP_BANK[baseIdx];
-      const allPermuted = permuteSuits([...item.board, ...item.hero]);
-      const board = allPermuted.slice(0, item.board.length);
-      const hero = allPermuted.slice(item.board.length);
 
       const evalHand = evaluateBestHand([...board, ...hero].map(cardFromCode));
-      state.postflop.current = { baseIdx, item, board, hero, evalHand };
+      state.postflop.current = { sig, item, board, hero, evalHand };
 
-      document.getElementById('post-street-badge').textContent = `${item.street} • ${item.matchup}`;
+      const modeTag = state.postflop.source === 'infinite' && (!forced || forced.customSpot) ? '♾️ Ao Vivo • ' : '';
+      document.getElementById('post-street-badge').textContent = `${modeTag}${item.street} • ${item.matchup}`;
       document.getElementById('post-pot-badge').textContent = `Pote: ${item.pot}`;
       document.getElementById('post-context-text').textContent = item.context;
       document.getElementById('post-board-cards').innerHTML = board.map(c => renderCardHTML(c, 'md')).join('');
@@ -1842,6 +2174,7 @@
       grid.innerHTML = item.options.map((opt, idx) => `
         <button type="button" onclick="submitPostflopAction(${idx})" class="py-3.5 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-emerald-400/50 text-white font-bold text-xs sm:text-sm transition shadow">
           ${opt}
+          <span class="block text-[10px] font-normal text-slate-400 mt-0.5">Tecla ${idx + 1}</span>
         </button>
       `).join('');
     }
@@ -1857,9 +2190,22 @@
       document.getElementById('post-session-score').textContent = `${state.postflop.sessionCorrect}/${state.postflop.sessionPlayed}`;
 
       recordAttempt('postflop', isCorrect, {
-        sig: `post:${cur.baseIdx}`,
+        sig: cur.sig,
         mode: 'postflop',
-        data: { bankIdx: cur.baseIdx }
+        data: {
+          sig: cur.sig,
+          customSpot: {
+            street: cur.item.street,
+            matchup: cur.item.matchup,
+            pot: cur.item.pot,
+            board: cur.board,
+            hero: cur.hero,
+            context: cur.item.context,
+            options: cur.item.options,
+            correctIdx: cur.item.correctIdx,
+            explanation: cur.item.explanation
+          }
+        }
       });
 
       const fb = document.getElementById('post-feedback');
@@ -2563,6 +2909,16 @@
         } else if (e.code === 'Space' || e.code === 'Enter') {
           e.preventDefault();
           nextStepOrDeal('preflop');
+        }
+      } else if (state.activeTab === 'postflop') {
+        const k = e.key;
+        if (!state.postflop.answered) {
+          if (k === '1') submitPostflopAction(0);
+          else if (k === '2') submitPostflopAction(1);
+          else if (k === '3') submitPostflopAction(2);
+        } else if (e.code === 'Space' || e.code === 'Enter') {
+          e.preventDefault();
+          nextStepOrDeal('postflop');
         }
       }
     });
