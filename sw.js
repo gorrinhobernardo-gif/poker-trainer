@@ -1,4 +1,4 @@
-const CACHE_NAME = 'poker-trainer-v2';
+const CACHE_NAME = 'poker-trainer-v5';
 const ASSETS = ['./', './index.html', './manifest.json', './icon.svg'];
 
 self.addEventListener('install', (event) => {

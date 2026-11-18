@@ -84,6 +84,24 @@
       -ms-overflow-style: none;
       scrollbar-width: none;
     }
+    .mode-scrollbar {
+      scrollbar-width: thin;
+      scrollbar-color: #10b981 #0f172a;
+    }
+    .mode-scrollbar::-webkit-scrollbar {
+      height: 6px;
+    }
+    .mode-scrollbar::-webkit-scrollbar-track {
+      background: #0f172a;
+      border-radius: 999px;
+    }
+    .mode-scrollbar::-webkit-scrollbar-thumb {
+      background: #10b981;
+      border-radius: 999px;
+    }
+    .mode-scrollbar::-webkit-scrollbar-thumb:hover {
+      background: #34d399;
+    }
   </style>
   <meta name="theme-color" content="#090d16">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -106,7 +124,7 @@
           <div class="truncate">
             <div class="font-bold text-sm sm:text-base tracking-tight text-white flex items-center gap-1.5">
               <span>Poker Trainer</span>
-              <span class="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">6-Max GTO/PTO</span>
+              <span id="hdr-mode-badge" class="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">6-Max GTO/PTO</span>
             </div>
             <p class="text-[11px] text-slate-400 hidden sm:block truncate">Treino de mãos, pré-flop, pós-flop, pot odds, ranges e equidade</p>
           </div>
@@ -123,8 +141,27 @@
           <span class="text-emerald-400">🎯</span>
           <span id="hdr-daily">0/15</span>
         </div>
+        <button type="button" id="btn-table-size" onclick="toggleTableSize()" class="px-2.5 py-1.5 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/40 text-xs font-bold text-emerald-300 transition flex items-center gap-1" title="Alternar entre mesas de 6 e 8 jogadores">
+          <span>👥</span>
+          <span id="lbl-table-size">6-Max</span>
+        </button>
+        <div class="flex items-center bg-amber-500/15 border border-amber-500/40 rounded-lg px-1.5 py-1 text-xs font-bold text-amber-300" title="Alterar tamanho do Stack em Big Blinds (BB)">
+          <span class="mr-1">🪙</span>
+          <select id="hdr-stack-select" onchange="setGlobalStackBb(this.value)" aria-label="Tamanho do Stack em BB" class="bg-transparent text-amber-200 font-extrabold focus:outline-none cursor-pointer">
+            <option value="10" class="bg-slate-900 text-white">10 bb</option>
+            <option value="15" class="bg-slate-900 text-white">15 bb</option>
+            <option value="25" class="bg-slate-900 text-white">25 bb</option>
+            <option value="50" class="bg-slate-900 text-white">50 bb</option>
+            <option value="100" selected class="bg-slate-900 text-white">100 bb</option>
+            <option value="200" class="bg-slate-900 text-white">200 bb</option>
+          </select>
+        </div>
         <button type="button" id="btn-deck-colors" onclick="toggleFourColorDeck()" class="px-2.5 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 text-xs font-medium text-slate-300 transition flex items-center gap-1" title="Alternar baralho de 2 ou 4 cores">
           <span id="lbl-deck-colors">4 Cores</span>
+        </button>
+        <button type="button" id="btn-sync" onclick="openSyncModal()" class="px-2.5 py-1.5 rounded-lg bg-sky-500/15 hover:bg-sky-500/25 border border-sky-500/40 text-xs font-bold text-sky-300 transition flex items-center gap-1" title="Exportar ou importar histórico e leaks entre PC e Celular">
+          <span>🔄</span>
+          <span class="hidden sm:inline">Sincronizar</span>
         </button>
         <button type="button" id="btn-sound" onclick="toggleSound()" class="p-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 transition text-sm" title="Ativar ou silenciar sons">
           <span id="icon-sound">🔊</span>
@@ -132,10 +169,17 @@
       </div>
     </div>
 
-    <!-- Navigation Tabs -->
-    <nav class="max-w-6xl mx-auto px-2 sm:px-6 flex items-center gap-1 overflow-x-auto no-scrollbar border-t border-slate-900/90 py-1.5">
+    <!-- Scrollable Mode Navigation Bar with Left/Right Arrows & Visible Scrollbar -->
+    <div class="max-w-6xl mx-auto px-1.5 sm:px-6 flex items-center gap-1 border-t border-slate-900/90 py-1">
+      <button type="button" id="btn-nav-left" onclick="scrollModeNav(-240)" class="shrink-0 w-7 h-8 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white text-xs font-extrabold flex items-center justify-center transition" title="Rolar modos para a esquerda">
+        ◀
+      </button>
+      <nav id="top-mode-nav" class="flex-1 flex items-center gap-1 overflow-x-auto mode-scrollbar py-1 px-1 scroll-smooth">
       <button type="button" data-nav="home" onclick="switchTab('home')" class="nav-tab px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold whitespace-nowrap transition">
         🏠 Início
+      </button>
+      <button type="button" data-nav="tablemap" onclick="switchTab('tablemap')" class="nav-tab px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold whitespace-nowrap transition">
+        🪑 Mesa &amp; Posições
       </button>
       <button type="button" data-nav="preflop" onclick="switchTab('preflop')" class="nav-tab px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold whitespace-nowrap transition">
         🃏 Pré-Flop
@@ -149,13 +193,23 @@
       <button type="button" data-nav="ranking" onclick="switchTab('ranking')" class="nav-tab px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold whitespace-nowrap transition">
         🏆 Showdown &amp; Ranking
       </button>
+      <button type="button" data-nav="advisor" onclick="switchTab('advisor')" class="nav-tab px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold whitespace-nowrap transition">
+        🧭 Consultor de Mão
+      </button>
+      <button type="button" data-nav="coach" onclick="switchTab('coach')" class="nav-tab px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold whitespace-nowrap transition">
+        🧠 Treinador &amp; Leaks
+      </button>
       <button type="button" data-nav="ranges" onclick="switchTab('ranges')" class="nav-tab px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold whitespace-nowrap transition">
         📊 Ranges 13x13
       </button>
       <button type="button" data-nav="tools" onclick="switchTab('tools')" class="nav-tab px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold whitespace-nowrap transition">
         ⚡ Calculadora &amp; Guia
       </button>
-    </nav>
+      </nav>
+      <button type="button" id="btn-nav-right" onclick="scrollModeNav(240)" class="shrink-0 w-7 h-8 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white text-xs font-extrabold flex items-center justify-center transition" title="Rolar modos para a direita">
+        ▶
+      </button>
+    </div>
   </header>
 
   <!-- Active Guided Session Banner (Daily Drill or Mistake Review) -->
@@ -232,11 +286,16 @@
       <!-- Personalized Coach Recommendation + Skill Breakdown -->
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
         <div class="lg:col-span-2 rounded-2xl bg-slate-900/90 border border-slate-800 p-5 space-y-4">
-          <div class="flex items-center justify-between">
+          <div class="flex flex-wrap items-center justify-between gap-2">
             <h2 class="text-base font-bold text-white">Desempenho por Fundamento</h2>
-            <button type="button" onclick="openResetModal()" class="text-xs text-slate-400 hover:text-rose-400 transition">
-              Zerar estatísticas
-            </button>
+            <div class="flex items-center gap-3">
+              <button type="button" onclick="openSyncModal()" class="text-xs font-semibold text-sky-400 hover:text-sky-300 transition">
+                🔄 Sincronizar PC / Celular
+              </button>
+              <button type="button" onclick="openResetModal()" class="text-xs text-slate-400 hover:text-rose-400 transition">
+                Zerar estatísticas
+              </button>
+            </div>
           </div>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5" id="skill-cards-container">
             <!-- Rendered dynamically -->
@@ -261,6 +320,14 @@
 
       <!-- Training Modules Grid -->
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <button type="button" onclick="switchTab('tablemap')" class="text-left p-4 rounded-2xl bg-slate-900/80 hover:bg-slate-800/80 border border-emerald-500/35 hover:border-emerald-400 transition group space-y-2">
+          <div class="flex items-center justify-between">
+            <span class="text-2xl">🪑</span>
+            <span class="text-xs font-semibold text-emerald-400 group-hover:translate-x-0.5 transition">Visualizar Mesa →</span>
+          </div>
+          <div class="font-bold text-white">Mapa Visual de Posições &amp; Stacks BB</div>
+          <p class="text-xs text-slate-400 leading-relaxed">Veja todas as posições na mesa oval (6-Max e 8-Max), gire o botão Dealer e altere o stack de 10 bb a 200 bb.</p>
+        </button>
         <button type="button" onclick="switchTab('preflop')" class="text-left p-4 rounded-2xl bg-slate-900/80 hover:bg-slate-800/80 border border-slate-800 hover:border-emerald-500/40 transition group space-y-2">
           <div class="flex items-center justify-between">
             <span class="text-2xl">🃏</span>
@@ -306,6 +373,24 @@
           <p class="text-xs text-slate-400 leading-relaxed">Explore tabelas pré-flop interativas por posição (LJ, HJ, CO, BTN, SB e BB) e clique para treinar qualquer spot.</p>
         </button>
 
+        <button type="button" onclick="switchTab('advisor')" class="text-left p-4 rounded-2xl bg-slate-900/80 hover:bg-slate-800/80 border border-emerald-500/30 hover:border-emerald-400 transition group space-y-2">
+          <div class="flex items-center justify-between">
+            <span class="text-2xl">🧭</span>
+            <span class="text-xs font-semibold text-emerald-400 group-hover:translate-x-0.5 transition">Analisar Spot →</span>
+          </div>
+          <div class="font-bold text-white">Consultor de Mão (6 e 8 Pessoas)</div>
+          <p class="text-xs text-slate-400 leading-relaxed">Insira suas cartas, posição, tamanho da mesa (6-Max ou 8-Max), bordo, pote e aposta recebida para simular a melhor jogada real.</p>
+        </button>
+
+        <button type="button" onclick="switchTab('coach')" class="text-left p-4 rounded-2xl bg-slate-900/80 hover:bg-slate-800/80 border border-amber-500/30 hover:border-amber-400 transition group space-y-2">
+          <div class="flex items-center justify-between">
+            <span class="text-2xl">🧠</span>
+            <span class="text-xs font-semibold text-amber-400 group-hover:translate-x-0.5 transition">Ver Diagnóstico →</span>
+          </div>
+          <div class="font-bold text-white">Treinador &amp; Raio-X de Leaks</div>
+          <p class="text-xs text-slate-400 leading-relaxed">Descubra exatamente onde você mais está errando, seu perfil de jogo atual e receba ajustes práticos personalizados.</p>
+        </button>
+
         <button type="button" onclick="switchTab('tools')" class="text-left p-4 rounded-2xl bg-slate-900/80 hover:bg-slate-800/80 border border-slate-800 hover:border-emerald-500/40 transition group space-y-2">
           <div class="flex items-center justify-between">
             <span class="text-2xl">⚡</span>
@@ -324,9 +409,11 @@
         <div class="flex flex-wrap items-center gap-2">
           <label class="text-xs text-slate-400 font-medium" for="pf-filter-spot">Cenário:</label>
           <select id="pf-filter-spot" onchange="onPreflopFilterChange()" class="bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-white focus:outline-none focus:border-emerald-500">
-            <option value="ALL">Todos os Cenários (6-Max 100bb)</option>
+            <option value="ALL">Todos os Cenários da Mesa Atual</option>
             <option value="RFI_ALL">Apenas Open Raise (RFI)</option>
             <option value="FACING_ALL">Apenas Enfrentando Open Raise</option>
+            <option value="UTG_RFI" class="opt-8max">UTG (8-Max) — Open Raise (2.5 bb)</option>
+            <option value="UTG1_RFI" class="opt-8max">UTG+1 (8-Max) — Open Raise (2.5 bb)</option>
             <option value="LJ_RFI">LJ — Open Raise (2.5 bb)</option>
             <option value="HJ_RFI">HJ — Open Raise (2.5 bb)</option>
             <option value="CO_RFI">CO — Open Raise (2.5 bb)</option>
@@ -336,6 +423,9 @@
             <option value="BTN_vs_LJ">BTN vs LJ Open</option>
             <option value="BTN_vs_CO">BTN vs CO Open</option>
             <option value="SB_vs_BTN">SB vs BTN Open</option>
+            <option value="LJ_vs_UTG" class="opt-8max">LJ vs UTG Open (8-Max)</option>
+            <option value="BTN_vs_UTG" class="opt-8max">BTN vs UTG Open (8-Max)</option>
+            <option value="BB_vs_UTG" class="opt-8max">BB vs UTG Open (8-Max)</option>
             <option value="BB_vs_LJ">BB vs LJ Open</option>
             <option value="BB_vs_BTN">BB vs BTN Open</option>
           </select>
@@ -343,6 +433,17 @@
           <button type="button" id="btn-pf-border" onclick="togglePreflopBorderFocus()" class="px-3 py-1.5 rounded-lg text-xs font-semibold border transition bg-slate-950 border-slate-700 text-slate-300">
             🎯 Foco na Borda: OFF
           </button>
+          <div class="flex items-center gap-1 bg-slate-950 border border-slate-700 rounded-lg px-2 py-1 text-xs">
+            <span class="text-slate-400">Stack:</span>
+            <select id="pf-stack-select" onchange="setGlobalStackBb(this.value)" class="bg-transparent font-bold text-amber-300 focus:outline-none">
+              <option value="10" class="bg-slate-900 text-white">10 bb (Push/Fold)</option>
+              <option value="15" class="bg-slate-900 text-white">15 bb (Push/Fold)</option>
+              <option value="25" class="bg-slate-900 text-white">25 bb (Torneio)</option>
+              <option value="50" class="bg-slate-900 text-white">50 bb (Médio)</option>
+              <option value="100" selected class="bg-slate-900 text-white">100 bb (Cash)</option>
+              <option value="200" class="bg-slate-900 text-white">200 bb (Deep)</option>
+            </select>
+          </div>
         </div>
 
         <div class="flex items-center gap-3 text-xs">
@@ -355,8 +456,8 @@
 
       <!-- Poker Table Visual -->
       <div class="felt-surface rounded-3xl p-4 sm:p-7 relative min-h-[340px] flex flex-col justify-between">
-        <!-- Top Seats Row: LJ, HJ, CO -->
-        <div class="grid grid-cols-3 gap-2 max-w-xl mx-auto w-full" id="pf-seats-top"></div>
+        <!-- Top Seats Row -->
+        <div class="grid grid-cols-3 gap-2 max-w-2xl mx-auto w-full" id="pf-seats-top"></div>
 
         <!-- Center Pot & Scenario Prompt -->
         <div class="my-5 text-center space-y-2">
@@ -370,8 +471,8 @@
           </div>
         </div>
 
-        <!-- Bottom Seats Row: SB, HERO / BTN, BB -->
-        <div class="grid grid-cols-3 gap-2 max-w-xl mx-auto w-full items-end" id="pf-seats-bottom"></div>
+        <!-- Bottom Seats Row -->
+        <div class="grid grid-cols-3 gap-2 max-w-2xl mx-auto w-full items-end" id="pf-seats-bottom"></div>
 
         <!-- Hero Hole Cards Display -->
         <div class="mt-5 flex flex-col items-center">
@@ -769,7 +870,390 @@
       </div>
     </section>
 
+    <!-- ==================== TAB 8: HAND & SPOT ADVISOR (CONSULTOR DE MÃO) ==================== -->
+    <section id="view-advisor" class="hidden space-y-5">
+      <div class="rounded-2xl bg-slate-900/90 border border-slate-800 p-4 sm:p-6 space-y-5">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
+          <div>
+            <div class="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-emerald-400 mb-1">
+              <span>🧭 Simulador de Decisão Baseado em Ranges Reais</span>
+            </div>
+            <h2 class="text-lg sm:text-xl font-extrabold text-white">Consultor de Mão Completa (Pré-Flop ao River)</h2>
+            <p class="text-xs text-slate-400">Monte sua mão, número de jogadores (6 ou 8), posições, bordo, pote e aposta recebida para simular equidade real (Monte Carlo) contra o range exato do vilão.</p>
+          </div>
+          <div class="flex items-center gap-2 shrink-0">
+            <button type="button" id="btn-adv-6max" onclick="setAdvisorTableSize(6)" class="px-3 py-2 rounded-xl text-xs font-bold border transition bg-emerald-500 text-slate-950 border-emerald-400">
+              👥 6 Pessoas (6-Max)
+            </button>
+            <button type="button" id="btn-adv-8max" onclick="setAdvisorTableSize(8)" class="px-3 py-2 rounded-xl text-xs font-bold border transition bg-slate-950 text-slate-300 border-slate-700">
+              👥 8 Pessoas (8-Max)
+            </button>
+          </div>
+        </div>
+
+        <!-- Parameters Form Row -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 bg-slate-950/75 border border-slate-800 rounded-xl p-3.5">
+          <div>
+            <label for="adv-hero-pos" class="block text-[11px] font-bold text-slate-400 uppercase mb-1">Sua Posição (Hero)</label>
+            <select id="adv-hero-pos" onchange="onAdvisorParamChange('heroPos')" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-2 text-xs font-bold text-white focus:outline-none focus:border-emerald-500"></select>
+          </div>
+
+          <div>
+            <label for="adv-situation" class="block text-[11px] font-bold text-slate-400 uppercase mb-1">Situação na Mão</label>
+            <select id="adv-situation" onchange="onAdvisorParamChange('situation')" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-2 text-xs font-bold text-white focus:outline-none focus:border-emerald-500">
+              <option value="RFI">Ninguém abriu (Open / RFI)</option>
+              <option value="FACING_OPEN">Recebi Open Raise (Pote 1 Raise)</option>
+              <option value="FACING_3BET">Abri e recebi 3-Bet (Pote 3-Bet)</option>
+            </select>
+          </div>
+
+          <div>
+            <label for="adv-vil-pos" class="block text-[11px] font-bold text-slate-400 uppercase mb-1">Posição do Vilão</label>
+            <select id="adv-vil-pos" onchange="onAdvisorParamChange('vilPos')" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-2 text-xs font-bold text-white focus:outline-none focus:border-emerald-500"></select>
+          </div>
+
+          <div>
+            <label for="adv-pot" class="block text-[11px] font-bold text-slate-400 uppercase mb-1">Pote Antes da Aposta (bb)</label>
+            <input id="adv-pot" type="number" min="1" max="500" step="0.5" value="6.0" oninput="runSpotAdvisor()" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-2 text-xs font-bold text-white focus:outline-none focus:border-emerald-500">
+          </div>
+
+          <div>
+            <label for="adv-bet" class="block text-[11px] font-bold text-slate-400 uppercase mb-1">Raise / Aposta Recebida (bb)</label>
+            <input id="adv-bet" type="number" min="0" max="500" step="0.5" value="2.5" oninput="runSpotAdvisor()" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-2 text-xs font-bold text-white focus:outline-none focus:border-emerald-500">
+          </div>
+        </div>
+
+        <!-- Quick Bet Sizing Helpers + Effective Stack -->
+        <div class="flex flex-wrap items-center justify-between gap-3 text-xs">
+          <div class="flex flex-wrap items-center gap-1.5">
+            <span class="text-slate-400 font-medium">Atalhos de Aposta Recebida:</span>
+            <button type="button" onclick="setAdvisorQuickBet(0)" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold border border-slate-700">Check (0 bb)</button>
+            <button type="button" onclick="setAdvisorQuickBet(0.33)" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold border border-slate-700">33% Pote</button>
+            <button type="button" onclick="setAdvisorQuickBet(0.50)" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold border border-slate-700">50% Pote</button>
+            <button type="button" onclick="setAdvisorQuickBet(0.75)" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold border border-slate-700">75% Pote</button>
+            <button type="button" onclick="setAdvisorQuickBet(1.00)" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold border border-slate-700">100% Pote</button>
+          </div>
+          <div class="flex items-center gap-2">
+            <label for="adv-stack" class="text-slate-400 font-medium">Stack Efetivo (bb):</label>
+            <input id="adv-stack" type="number" min="5" max="300" step="5" value="100" oninput="runSpotAdvisor()" class="w-20 bg-slate-950 border border-slate-700 rounded-lg px-2 py-1 text-xs font-bold text-white">
+          </div>
+        </div>
+
+        <!-- Cards Selection: Hero + Board -->
+        <div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
+          <div class="md:col-span-4 p-4 rounded-xl bg-slate-950/80 border border-slate-800 space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold uppercase tracking-wider text-emerald-400">Sua Mão (2 Cartas)</span>
+              <span id="adv-hand-notation" class="text-xs font-extrabold px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">AKs</span>
+            </div>
+            <div id="adv-slots-hero" class="flex items-center gap-2.5"></div>
+          </div>
+
+          <div class="md:col-span-8 p-4 rounded-xl bg-slate-950/80 border border-slate-800 space-y-2">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <span class="text-xs font-bold uppercase tracking-wider text-amber-300">Bordo: Vazio = Pré-Flop • 3 = Flop • 4 = Turn • 5 = River</span>
+              <div class="flex items-center gap-2">
+                <button type="button" onclick="clearAdvisorBoard()" class="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold border border-slate-700">Limpar Bordo (Pré-Flop)</button>
+                <button type="button" onclick="runSpotAdvisor()" class="px-3 py-1 rounded bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-extrabold">Simular Agora</button>
+              </div>
+            </div>
+            <div id="adv-slots-board" class="flex items-center gap-2 flex-wrap"></div>
+          </div>
+        </div>
+
+        <!-- Interactive 52-card Deck Picker for Advisor -->
+        <div class="p-3.5 rounded-xl bg-slate-950/90 border border-slate-800 space-y-2">
+          <div class="flex items-center justify-between text-xs">
+            <span class="text-slate-300 font-semibold">Escolhendo carta para: <strong id="adv-active-slot-label" class="text-emerald-400">Bordo Carta 1 (Flop)</strong></span>
+            <button type="button" onclick="clearSelectedAdvisorSlot()" class="text-slate-400 hover:text-white underline">Remover carta deste slot</button>
+          </div>
+          <div id="adv-deck-grid" class="space-y-1.5"></div>
+        </div>
+
+        <!-- Real-Time Recommendation Output Card -->
+        <div id="adv-result-box" class="rounded-2xl border border-emerald-500/40 bg-gradient-to-br from-slate-950 via-slate-900 to-emerald-950/35 p-5 space-y-4 shadow-xl">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800/90 pb-3.5">
+            <div>
+              <div id="adv-street-summary" class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Análise Pré-Flop • 6-Max</div>
+              <div id="adv-verdict-badge" class="text-xl sm:text-2xl font-extrabold text-emerald-400 mt-0.5">Recomendação: Aumentar / 3-Bet</div>
+            </div>
+            <div id="adv-range-pill" class="px-3 py-1.5 rounded-xl bg-slate-950/90 border border-slate-700 text-xs font-semibold text-slate-300">
+              Range estimado do vilão: —
+            </div>
+          </div>
+
+          <!-- 4 Real Metrics Strip -->
+          <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            <div class="p-3 rounded-xl bg-slate-950/80 border border-slate-800">
+              <div class="text-[11px] text-slate-400">Equidade Real vs Range</div>
+              <div id="adv-metric-eq" class="text-lg font-extrabold text-emerald-400 mt-0.5">—</div>
+              <div id="adv-metric-eq-sub" class="text-[10px] text-slate-400 mt-0.5">Monte Carlo (2.000 mãos)</div>
+            </div>
+            <div class="p-3 rounded-xl bg-slate-950/80 border border-slate-800">
+              <div class="text-[11px] text-slate-400">Pot Odds Exigidas</div>
+              <div id="adv-metric-potodds" class="text-lg font-extrabold text-amber-300 mt-0.5">—</div>
+              <div id="adv-metric-potodds-sub" class="text-[10px] text-slate-400 mt-0.5">Break-even mínimo</div>
+            </div>
+            <div class="p-3 rounded-xl bg-slate-950/80 border border-slate-800">
+              <div class="text-[11px] text-slate-400">Margem EV &amp; SPR</div>
+              <div id="adv-metric-ev" class="text-lg font-extrabold text-sky-400 mt-0.5">—</div>
+              <div id="adv-metric-spr" class="text-[10px] text-slate-400 mt-0.5">SPR: —</div>
+            </div>
+            <div class="p-3 rounded-xl bg-slate-950/80 border border-slate-800">
+              <div class="text-[11px] text-slate-400">Jogo Atual &amp; Outs</div>
+              <div id="adv-metric-hand" class="text-sm font-extrabold text-white mt-1 truncate">—</div>
+              <div id="adv-metric-outs" class="text-[10px] text-amber-300 mt-0.5 truncate">—</div>
+            </div>
+          </div>
+
+          <div id="adv-explanation" class="text-xs sm:text-sm text-slate-200 leading-relaxed space-y-1.5"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== TAB 9: PERSONALIZED AI COACH & LEAK ANALYZER ==================== -->
+    <section id="view-coach" class="hidden space-y-5">
+      <div class="rounded-2xl bg-gradient-to-br from-slate-900 via-slate-900 to-amber-950/40 border border-slate-800 p-5 sm:p-6 space-y-4">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div class="space-y-1.5 max-w-2xl">
+            <div class="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-amber-400">
+              <span>🧠 Diagnóstico Inteligente de Erros (Leak Finder)</span>
+            </div>
+            <h2 class="text-xl sm:text-2xl font-extrabold text-white">Análise Personalizada do Seu Jogo &amp; Ajustes Recomendados</h2>
+            <p class="text-xs sm:text-sm text-slate-300 leading-relaxed">
+              O treinador monitora cada decisão sua no Pré-Flop (6-Max e 8-Max), Pós-Flop, Pot Odds e Showdown para detectar padrões de perda de fichas e recomendar correções diretas.
+            </p>
+          </div>
+          <div class="p-4 rounded-2xl bg-slate-950/80 border border-slate-800 shrink-0 md:w-64 text-center space-y-1">
+            <div class="text-[11px] uppercase tracking-wider text-slate-400 font-bold">Tendência Detectada</div>
+            <div id="coach-style-badge" class="text-lg font-extrabold text-emerald-400">Em Calibração</div>
+            <div id="coach-sample-count" class="text-[11px] text-slate-400">Jogue mãos para destravar</div>
+          </div>
+        </div>
+
+        <!-- Tendency Meters -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+          <div class="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800 space-y-1.5">
+            <div class="flex justify-between text-xs">
+              <span class="text-slate-400 font-medium">Disciplina Pré-Flop</span>
+              <span id="coach-meter-pf-lbl" class="font-bold text-white">—</span>
+            </div>
+            <div class="w-full h-2 rounded-full bg-slate-800 overflow-hidden">
+              <div id="coach-meter-pf-bar" class="h-full bg-emerald-500 transition-all duration-300" style="width: 0%"></div>
+            </div>
+          </div>
+          <div class="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800 space-y-1.5">
+            <div class="flex justify-between text-xs">
+              <span class="text-slate-400 font-medium">Decisão Pós-Flop</span>
+              <span id="coach-meter-post-lbl" class="font-bold text-white">—</span>
+            </div>
+            <div class="w-full h-2 rounded-full bg-slate-800 overflow-hidden">
+              <div id="coach-meter-post-bar" class="h-full bg-sky-500 transition-all duration-300" style="width: 0%"></div>
+            </div>
+          </div>
+          <div class="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800 space-y-1.5">
+            <div class="flex justify-between text-xs">
+              <span class="text-slate-400 font-medium">Matemática &amp; Leitura</span>
+              <span id="coach-meter-math-lbl" class="font-bold text-white">—</span>
+            </div>
+            <div class="w-full h-2 rounded-full bg-slate-800 overflow-hidden">
+              <div id="coach-meter-math-bar" class="h-full bg-amber-400 transition-all duration-300" style="width: 0%"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Ranked Leaks List & Actionable Prescriptions -->
+      <div class="space-y-3">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <h3 class="text-base font-bold text-white">Principais Pontos de Erro &amp; Recomendações de Ajuste</h3>
+          <div class="flex items-center gap-2">
+            <button type="button" onclick="openSyncModal()" class="px-3 py-1.5 rounded-lg bg-sky-500/15 hover:bg-sky-500/25 border border-sky-500/30 text-sky-300 text-xs font-bold transition">
+              🔄 Exportar / Importar Leaks
+            </button>
+            <button type="button" onclick="startMistakeReview()" class="px-3 py-1.5 rounded-lg bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/30 text-rose-300 text-xs font-bold transition">
+              🔁 Revisar Fila de Erros
+            </button>
+          </div>
+        </div>
+        <div id="coach-leaks-list" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+      </div>
+    </section>
+
+    <!-- ==================== TAB 10: VISUAL TABLE POSITIONS & BB STACK EXPLORER ==================== -->
+    <section id="view-tablemap" class="hidden space-y-5">
+      <div class="rounded-2xl bg-slate-900/90 border border-slate-800 p-4 sm:p-5 space-y-4">
+        <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          <div>
+            <div class="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-emerald-400 mb-0.5">
+              <span>🪑 Mapa Interativo de Posições e Profundidade de Stack</span>
+            </div>
+            <h2 class="text-lg sm:text-xl font-extrabold text-white">Posições na Mesa em Tempo Real (6-Max e 8-Max)</h2>
+            <p class="text-xs text-slate-400">Toque em qualquer assento na mesa oval abaixo para ver quem age antes/depois, como o botão gira e como o número de Big Blinds muda sua estratégia.</p>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-2">
+            <button type="button" id="btn-tm-6max" onclick="setTableMapPlayers(6)" class="px-3 py-1.5 rounded-xl text-xs font-bold border transition bg-emerald-500 text-slate-950 border-emerald-400">
+              👥 6 Pessoas
+            </button>
+            <button type="button" id="btn-tm-8max" onclick="setTableMapPlayers(8)" class="px-3 py-1.5 rounded-xl text-xs font-bold border transition bg-slate-950 text-slate-300 border-slate-700">
+              👥 8 Pessoas
+            </button>
+            <button type="button" onclick="rotateTableMapDealer()" class="px-3 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-400/40 text-amber-200 text-xs font-bold transition">
+              🎲 Girar Botão Dealer ↻
+            </button>
+          </div>
+        </div>
+
+        <!-- Stack Size (BB) Bar: Pills + Slider + Street Order Toggle -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-center bg-slate-950/80 border border-slate-800 rounded-xl p-3.5">
+          <div class="lg:col-span-7 space-y-2">
+            <div class="flex items-center justify-between text-xs">
+              <span class="font-bold text-slate-300">🪙 Tamanho do Stack Efetivo: <strong id="tm-stack-readout" class="text-amber-300 text-sm">100 bb</strong></span>
+              <span id="tm-stack-zone-badge" class="px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 text-[11px] font-bold">Cash / Deep Padrão</span>
+            </div>
+            <input id="tm-stack-slider" type="range" min="8" max="200" step="1" value="100" oninput="setGlobalStackBb(this.value)" class="w-full accent-emerald-500 cursor-pointer">
+            <div class="flex flex-wrap gap-1.5 pt-0.5" id="tm-stack-pills">
+              <button type="button" onclick="setGlobalStackBb(10)" class="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-xs font-bold text-slate-200">10 bb</button>
+              <button type="button" onclick="setGlobalStackBb(15)" class="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-xs font-bold text-slate-200">15 bb</button>
+              <button type="button" onclick="setGlobalStackBb(25)" class="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-xs font-bold text-slate-200">25 bb</button>
+              <button type="button" onclick="setGlobalStackBb(50)" class="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-xs font-bold text-slate-200">50 bb</button>
+              <button type="button" onclick="setGlobalStackBb(100)" class="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-xs font-bold text-slate-200">100 bb</button>
+              <button type="button" onclick="setGlobalStackBb(200)" class="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-xs font-bold text-slate-200">200 bb</button>
+            </div>
+          </div>
+
+          <div class="lg:col-span-5 flex flex-col sm:flex-row lg:flex-col gap-2 justify-end">
+            <div class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Visualizar Ordem de Ação:</div>
+            <div class="grid grid-cols-2 gap-2">
+              <button type="button" id="btn-tm-order-pre" onclick="setTableMapOrderMode('preflop')" class="py-2 px-3 rounded-xl text-xs font-bold border transition bg-emerald-500 text-slate-950 border-emerald-400">
+                1º → Último Pré-Flop
+              </button>
+              <button type="button" id="btn-tm-order-post" onclick="setTableMapOrderMode('postflop')" class="py-2 px-3 rounded-xl text-xs font-bold border transition bg-slate-900 text-slate-300 border-slate-700">
+                1º → Último Pós-Flop
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Visual Oval Table + Selected Seat Details -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+        <!-- Interactive Oval Felt Table -->
+        <div class="lg:col-span-7 rounded-3xl bg-slate-900/90 border border-slate-800 p-4 sm:p-6">
+          <div id="tm-oval-container" class="relative w-full max-w-xl mx-auto h-[340px] sm:h-[390px] select-none">
+            <!-- Outer Oval Felt -->
+            <div class="absolute inset-6 sm:inset-8 rounded-full felt-surface flex flex-col items-center justify-center text-center p-4">
+              <div class="w-[82%] h-[74%] rounded-full border border-emerald-300/20 flex flex-col items-center justify-center px-3 space-y-1">
+                <div id="tm-center-title" class="text-xs sm:text-sm font-extrabold text-emerald-200">Mesa 6-Max • 100 bb</div>
+                <div id="tm-center-sub" class="text-[11px] text-slate-200/80">Sentido Horário ↻ • Blinds 0.5 / 1.0 bb</div>
+                <div id="tm-center-order-hint" class="text-[10px] font-semibold px-2.5 py-0.5 rounded-full bg-black/40 text-amber-300 border border-amber-400/25">
+                  Pré-Flop: LJ fala 1º • BB fala por último
+                </div>
+              </div>
+            </div>
+            <!-- Dynamic Seats Overlay -->
+            <div id="tm-seats-layer" class="absolute inset-0"></div>
+          </div>
+          <div class="flex flex-wrap items-center justify-center gap-4 text-[11px] text-slate-400 pt-2 border-t border-slate-800/80 mt-2">
+            <span class="inline-flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-rose-500 inline-block"></span> Posição Inicial (Tight)</span>
+            <span class="inline-flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-amber-400 inline-block"></span> Posição Média</span>
+            <span class="inline-flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-emerald-400 inline-block"></span> Posição Final (Vantagem)</span>
+            <span class="inline-flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-sky-400 inline-block"></span> Blinds (Aposta Obrigatória)</span>
+          </div>
+        </div>
+
+        <!-- Seat Inspector Card -->
+        <div class="lg:col-span-5 rounded-2xl bg-slate-900/90 border border-slate-800 p-5 space-y-4">
+          <div class="flex items-start justify-between gap-2 border-b border-slate-800 pb-3">
+            <div>
+              <div id="tm-seat-cat-badge" class="text-[11px] font-bold uppercase tracking-wider text-emerald-400">Posição Final • Melhor Assento</div>
+              <h3 id="tm-seat-title" class="text-xl font-extrabold text-white mt-0.5">BTN — Button (Dealer)</h3>
+            </div>
+            <span id="tm-seat-open-pct" class="px-3 py-1 rounded-xl bg-emerald-500/15 border border-emerald-500/35 text-emerald-300 text-sm font-extrabold">49.0%</span>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2.5 text-xs">
+            <div class="p-3 rounded-xl bg-slate-950/80 border border-slate-800">
+              <div class="text-slate-400 text-[11px]">Ordem Pré-Flop</div>
+              <div id="tm-seat-pre-order" class="font-extrabold text-white mt-0.5">4º a agir</div>
+            </div>
+            <div class="p-3 rounded-xl bg-slate-950/80 border border-slate-800">
+              <div class="text-slate-400 text-[11px]">Ordem Pós-Flop</div>
+              <div id="tm-seat-post-order" class="font-extrabold text-emerald-400 mt-0.5">Último a agir (Sempre IP)</div>
+            </div>
+          </div>
+
+          <p id="tm-seat-role-desc" class="text-xs sm:text-sm text-slate-300 leading-relaxed"></p>
+
+          <div class="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 space-y-1">
+            <div class="text-xs font-extrabold text-amber-300">🪙 Ajuste para <span id="tm-seat-stack-lbl">100 bb</span>:</div>
+            <p id="tm-seat-stack-advice" class="text-xs text-slate-200 leading-relaxed"></p>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+            <button type="button" onclick="jumpFromTableMapToRange()" class="py-2.5 px-3 rounded-xl bg-sky-500/15 hover:bg-sky-500/25 border border-sky-500/35 text-sky-300 font-bold text-xs transition">
+              📊 Ver Matriz 13x13
+            </button>
+            <button type="button" onclick="jumpFromTableMapToDrill()" class="py-2.5 px-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold text-xs transition">
+              🃏 Treinar nesta Posição →
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
   </main>
+
+  <!-- Sync / Backup Code Modal (PC <-> Mobile) -->
+  <div id="modal-sync" class="hidden fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-lg w-full p-5 sm:p-6 space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto">
+      <div class="flex items-start justify-between gap-3">
+        <div>
+          <h3 class="text-lg font-extrabold text-white">🔄 Sincronizar Progresso &amp; Leaks (PC ↔ Celular)</h3>
+          <p class="text-xs text-slate-400 mt-0.5 leading-relaxed">
+            Copie o código abaixo e envie para você mesmo (WhatsApp, Telegram ou e-mail) para transferir ou somar seu histórico, XP e diagnóstico de erros em outro aparelho.
+          </p>
+        </div>
+        <button type="button" onclick="closeSyncModal()" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold">✕</button>
+      </div>
+
+      <!-- Export Box -->
+      <div class="p-3.5 rounded-xl bg-slate-950/85 border border-slate-800 space-y-2.5">
+        <div class="flex items-center justify-between gap-2">
+          <label for="sync-export-text" class="text-xs font-bold uppercase tracking-wider text-emerald-400">1. Exportar Deste Aparelho</label>
+          <span id="sync-export-meta" class="text-[11px] text-slate-400">Pronto para copiar</span>
+        </div>
+        <textarea id="sync-export-text" readonly rows="3" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-[11px] font-mono text-slate-200 focus:outline-none select-all"></textarea>
+        <div class="flex flex-wrap gap-2">
+          <button type="button" onclick="copySyncCode()" class="flex-1 py-2 px-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold text-xs transition">
+            📋 Copiar Código de Backup
+          </button>
+          <button type="button" onclick="downloadSyncFile()" class="py-2 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-semibold text-xs transition">
+            💾 Baixar .txt
+          </button>
+        </div>
+      </div>
+
+      <!-- Import Box -->
+      <div class="p-3.5 rounded-xl bg-slate-950/85 border border-slate-800 space-y-2.5">
+        <label for="sync-import-text" class="block text-xs font-bold uppercase tracking-wider text-sky-400">2. Importar Código de Outro Aparelho</label>
+        <textarea id="sync-import-text" rows="3" placeholder="Cole aqui o código PTBR1:... gerado no seu outro dispositivo" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-[11px] font-mono text-white focus:outline-none focus:border-sky-500"></textarea>
+        <div id="sync-status-msg" class="hidden text-xs font-semibold px-3 py-2 rounded-lg"></div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+          <button type="button" onclick="applySyncCode('merge')" class="py-2.5 px-3 rounded-xl bg-sky-500 hover:bg-sky-400 text-slate-950 font-extrabold text-xs transition">
+            ➕ Somar / Mesclar (PC + Celular)
+          </button>
+          <button type="button" onclick="applySyncCode('replace')" class="py-2.5 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-600 text-white font-bold text-xs transition">
+            🔁 Substituir por Este Código
+          </button>
+        </div>
+        <p class="text-[11px] text-slate-400 leading-relaxed">
+          <strong>Dica:</strong> <em>Somar / Mesclar</em> junta as mãos jogadas, XP e leaks dos dois aparelhos; <em>Substituir</em> deixa este aparelho idêntico ao código colado.
+        </p>
+      </div>
+    </div>
+  </div>
 
   <!-- Reset Confirmation Modal -->
   <div id="modal-reset" class="hidden fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
@@ -838,6 +1322,10 @@
       'Royal Flush'
     ];
     const POSITIONS_6MAX = ['LJ', 'HJ', 'CO', 'BTN', 'SB', 'BB'];
+    const POSITIONS_8MAX = ['UTG', 'UTG+1', 'LJ', 'HJ', 'CO', 'BTN', 'SB', 'BB'];
+    function getActivePositions(size) {
+      return (size || state.tableSize) === 8 ? POSITIONS_8MAX : POSITIONS_6MAX;
+    }
 
     const GLOSSARY_ITEMS = [
       { term: 'LJ / HJ / CO / BTN', def: 'Posições no 6-Max antes dos blinds: Lojack (primeiro a falar, equivale ao UTG), Hijack, Cutoff e Button (melhor posição da mesa, age por último no pós-flop).' },
@@ -994,32 +1482,67 @@
     }
 
     const PREFLOP_SCENARIOS = {
+      UTG_RFI: {
+        id: 'UTG_RFI', minPlayers: 8, group: 'RFI', heroPos: 'UTG', openerPos: null, raiseLabel: 'Abrir 2.5 bb', potBefore: 1.5,
+        title: 'UTG (8-Max) — Open Raise (2.5 bb)',
+        desc: 'Primeira posição numa mesa de 8 jogadores (7 oponentes atrás). Range enxuto (~12,2%) focado em pares 66+, broadways fortes e conectores suited premium.',
+        raise: parseRangeNotation('55+, A8s+, A5s-A3s, KTs+, QTs+, JTs, T9s, 98s, AJo+, KQo'),
+        call: new Set()
+      },
+      UTG1_RFI: {
+        id: 'UTG1_RFI', minPlayers: 8, group: 'RFI', heroPos: 'UTG+1', openerPos: null, raiseLabel: 'Abrir 2.5 bb', potBefore: 1.5,
+        title: 'UTG+1 (8-Max) — Open Raise (2.5 bb)',
+        desc: 'Segunda posição no 8-Max (6 jogadores atrás, ~15,2% das mãos). Adicione 55, A9s, A4s, KTs, QTs, 98s, AJo e KQo.',
+        raise: parseRangeNotation('44+, A6s+, A5s-A2s, K9s+, Q9s+, J9s+, T9s, 98s, 87s, 76s, ATo+, KJo+, QJo'),
+        call: new Set()
+      },
+      LJ_vs_UTG: {
+        id: 'LJ_vs_UTG', minPlayers: 8, group: 'FACING', heroPos: 'LJ', openerPos: 'UTG', raiseLabel: '3-Bet 7.5 bb', potBefore: 4.0,
+        title: 'LJ vs UTG Open (8-Max)',
+        desc: 'Contra o range fortíssimo do UTG de 8 pessoas (~12%) e restando 5 jogadores atrás, jogue estritamente 3-Bet ou Fold com o topo absoluto e bloqueadores A5s.',
+        raise: parseRangeNotation('QQ+, AKs, AQs, A5s, AKo'),
+        call: new Set()
+      },
+      BTN_vs_UTG: {
+        id: 'BTN_vs_UTG', minPlayers: 8, group: 'FACING', heroPos: 'BTN', openerPos: 'UTG', raiseLabel: '3-Bet 7.5 bb', potBefore: 4.0,
+        title: 'BTN vs UTG Open (8-Max)',
+        desc: 'Em posição no Button contra o UTG de 8-Max: 3-bet apenas mãos premium/bloqueadores e pague com pares médios e suited conectados que quebram overpairs.',
+        raise: parseRangeNotation('QQ+, AKs, A5s, AKo'),
+        call: parseRangeNotation('JJ-66, AQs-AJs, KQs, QJs, JTs, T9s, AQo')
+      },
+      BB_vs_UTG: {
+        id: 'BB_vs_UTG', minPlayers: 8, group: 'FACING', heroPos: 'BB', openerPos: 'UTG', raiseLabel: '3-Bet 10 bb', potBefore: 4.0,
+        title: 'BB vs UTG Open (8-Max)',
+        desc: 'No Big Blind contra UTG de 8 jogadores você tem pot odds para defender pares e suited conectados, mas descarte offsuits facilmente dominados como AJo ou KQo.',
+        raise: parseRangeNotation('KK+, AKs, A5s'),
+        call: parseRangeNotation('QQ-22, AQs-ATs, A4s-A2s, KJs+, QJs, JTs, T9s, 98s, 87s, AKo, AQo')
+      },
       LJ_RFI: {
         id: 'LJ_RFI', group: 'RFI', heroPos: 'LJ', openerPos: null, raiseLabel: 'Abrir 2.5 bb', potBefore: 1.5,
         title: 'LJ — Open Raise (2.5 bb)',
         desc: 'Primeira posição a falar no 6-Max (5 jogadores atrás). Jogue sólido com pares, broadways fortes e ases/conectores suited.',
-        raise: parseRangeNotation('55+, ATs+, A5s-A4s, KTs+, QTs+, J9s+, T9s, 98s, 87s, 76s, AJo+, KQo'),
+        raise: parseRangeNotation('22+, A2s+, K9s+, Q9s+, J9s+, T8s+, 98s, 87s, 76s, 65s, 54s, ATo+, KJo+, QJo'),
         call: new Set()
       },
       HJ_RFI: {
         id: 'HJ_RFI', group: 'RFI', heroPos: 'HJ', openerPos: null, raiseLabel: 'Abrir 2.5 bb', potBefore: 1.5,
         title: 'HJ — Open Raise (2.5 bb)',
         desc: 'Com 4 jogadores restantes, expanda levemente adicionando todos os ases suited da roda (A5s-A2s), pares médios-baixos e mais broadways.',
-        raise: parseRangeNotation('44+, A8s+, A5s-A2s, K9s+, Q9s+, J9s+, T8s+, 98s, 87s, 76s, 65s, ATo+, KJo+, QJo'),
+        raise: parseRangeNotation('22+, A2s+, K7s+, Q8s+, J8s+, T8s+, 97s+, 87s, 76s, 65s, 54s, A9o+, KTo+, QTo+, JTo'),
         call: new Set()
       },
       CO_RFI: {
         id: 'CO_RFI', group: 'RFI', heroPos: 'CO', openerPos: null, raiseLabel: 'Abrir 2.5 bb', potBefore: 1.5,
         title: 'CO — Open Raise (2.5 bb)',
         desc: 'No Cutoff restam apenas BTN e os blinds. Todos os pares (22+), todos os ases suited (A2s+) e conectores suited entram por valor.',
-        raise: parseRangeNotation('22+, A2s+, K7s+, Q8s+, J8s+, T8s+, 97s+, 86s+, 76s, 65s, 54s, A9o+, KTo+, QTo+, JTo'),
+        raise: parseRangeNotation('22+, A2s+, K4s+, Q6s+, J7s+, T7s+, 97s+, 86s+, 75s+, 65s, 54s, A7o+, K9o+, Q9o+, J9o+, T9o'),
         call: new Set()
       },
       BTN_RFI: {
         id: 'BTN_RFI', group: 'RFI', heroPos: 'BTN', openerPos: null, raiseLabel: 'Abrir 2.5 bb', potBefore: 1.5,
         title: 'BTN — Open Raise (2.5 bb)',
         desc: 'Posição mais lucrativa do poker: você agirá por último em todas as streets pós-flop contra apenas SB e BB. Abra cerca de 44% das mãos.',
-        raise: parseRangeNotation('22+, A2s+, K2s+, Q4s+, J6s+, T6s+, 96s+, 85s+, 75s+, 64s+, 54s, 43s, A4o+, K8o+, Q9o+, J9o+, T9o, 98o'),
+        raise: parseRangeNotation('22+, A2s+, K2s+, Q2s+, J5s+, T6s+, 96s+, 85s+, 75s+, 64s+, 53s+, 43s, A2o+, K7o+, Q8o+, J8o+, T8o+, 98o, 87o'),
         call: new Set()
       },
       SB_RFI: {
@@ -1113,6 +1636,111 @@
       return border;
     }
 
+    // Push/Fold Nash-inspired 10bb & 15bb ranges by position
+    const PUSH_FOLD_10BB = {
+      'UTG': parseRangeNotation('44+, A7s+, A5s-A3s, KTs+, QTs+, JTs, T9s, ATo+, KQo'),
+      'UTG+1': parseRangeNotation('33+, A4s+, K9s+, QTs+, J9s+, T9s, ATo+, KJo+'),
+      'LJ': parseRangeNotation('22+, A2s+, K8s+, Q9s+, J9s+, T8s+, 98s, A9o+, KTo+, QJo'),
+      'HJ': parseRangeNotation('22+, A2s+, K6s+, Q8s+, J8s+, T8s+, 98s, 87s, A8o+, KTo+, QTo+, JTo'),
+      'CO': parseRangeNotation('22+, A2s+, K3s+, Q6s+, J7s+, T7s+, 97s+, 87s, 76s, A5o+, K9o+, Q9o+, J9o+, T9o'),
+      'BTN': parseRangeNotation('22+, A2s+, K2s+, Q3s+, J5s+, T6s+, 96s+, 86s+, 76s, 65s, A2o+, K7o+, Q8o+, J8o+, T8o+, 98o'),
+      'SB': parseRangeNotation('22+, A2s+, K2s+, Q2s+, J2s+, T4s+, 95s+, 85s+, 75s+, 64s+, 54s, A2o+, K2o+, Q5o+, J7o+, T7o+, 97o+, 87o')
+    };
+
+    const PUSH_FOLD_15BB = {
+      'UTG': parseRangeNotation('55+, A8s+, A5s-A4s, KTs+, QTs+, JTs, AJo+, KQo'),
+      'UTG+1': parseRangeNotation('44+, A6s+, A5s-A3s, K9s+, QTs+, JTs, T9s, ATo+, KJo+'),
+      'LJ': parseRangeNotation('33+, A3s+, K9s+, Q9s+, J9s+, T9s, 98s, ATo+, KJo+, QJo'),
+      'HJ': parseRangeNotation('22+, A2s+, K7s+, Q9s+, J9s+, T8s+, 98s, 87s, A9o+, KTo+, QJo'),
+      'CO': parseRangeNotation('22+, A2s+, K5s+, Q7s+, J8s+, T8s+, 97s+, 87s, 76s, A7o+, K9o+, QTo+, JTo'),
+      'BTN': parseRangeNotation('22+, A2s+, K2s+, Q4s+, J6s+, T6s+, 96s+, 86s+, 76s, 65s, A2o+, K8o+, Q9o+, J9o+, T9o'),
+      'SB': parseRangeNotation('22+, A2s+, K2s+, Q2s+, J4s+, T5s+, 96s+, 85s+, 75s+, 64s+, 54s, A2o+, K4o+, Q7o+, J8o+, T8o+, 98o')
+    };
+
+    function getEffectiveScenario(baseSc, stackBb) {
+      const bb = Number(stackBb || state.stackBb || 100);
+      if (bb >= 80 && bb <= 130) return baseSc;
+
+      // Short-stack Push/Fold (<= 16 bb)
+      if (bb <= 16) {
+        if (baseSc.group === 'RFI') {
+          const chart = bb <= 12 ? PUSH_FOLD_10BB : PUSH_FOLD_15BB;
+          const shoveSet = chart[baseSc.heroPos] || baseSc.raise;
+          return Object.assign({}, baseSc, {
+            raiseLabel: `All-in (Push ${bb} bb)`,
+            title: `${baseSc.heroPos} — Push ou Fold (${bb} bb)`,
+            desc: `Com stack curto de ${bb} bb, aumentos pequenos comprometem grande parte das fichas. Jogue Push All-in (${bb} bb) ou Fold maximizando sua Fold Equity.`,
+            raise: shoveSet,
+            call: new Set()
+          });
+        } else {
+          // Facing open / shove at <= 16 bb -> Re-shove / Call All-in or Fold
+          const merged = new Set([...baseSc.raise]);
+          baseSc.call.forEach(h => {
+            if (h.length === 2 || h[0] === 'A' || (h[0] === 'K' && h[1] === 'Q')) merged.add(h);
+          });
+          return Object.assign({}, baseSc, {
+            raiseLabel: `All-in (${bb} bb)`,
+            title: `${baseSc.heroPos} vs ${baseSc.openerPos} (${bb} bb All-in)`,
+            desc: `Com ${bb} bb efetivos contra abertura de ${baseSc.openerPos}, elimine o range de Call passivo e vá All-in direto com pares e cartas altas fortes.`,
+            raise: merged,
+            call: new Set()
+          });
+        }
+      }
+
+      // Tournament Mid-Short Stack (17 - 35 bb)
+      if (bb <= 35) {
+        const openSz = baseSc.heroPos === 'SB' ? '2.5 bb' : '2.0 bb';
+        const filteredRaise = new Set();
+        baseSc.raise.forEach(h => {
+          // Small pocket pairs 22-33 in early seats & tiny suited connectors lose set-mining / implied odds
+          if ((baseSc.heroPos === 'UTG' || baseSc.heroPos === 'UTG+1' || baseSc.heroPos === 'LJ') && (h === '22' || h === '33' || h === '54s' || h === '65s')) return;
+          filteredRaise.add(h);
+        });
+        if (baseSc.group === 'RFI') {
+          return Object.assign({}, baseSc, {
+            raiseLabel: `Abrir ${openSz}`,
+            title: `${baseSc.heroPos} — Open ${openSz} (${bb} bb)`,
+            desc: `Com ${bb} bb (stack de torneio), use min-raise (${openSz}) para arriscar menos fichas contra 3-bet shoves, priorizando bloqueadores altos (Ax/Kx) sobre pares muito baixos fora de posição.`,
+            raise: filteredRaise,
+            call: new Set()
+          });
+        } else {
+          return Object.assign({}, baseSc, {
+            raiseLabel: `3-Bet All-in (${bb} bb)`,
+            title: `${baseSc.heroPos} vs ${baseSc.openerPos} (${bb} bb)`,
+            desc: `Em torno de ${bb} bb, o 3-Bet All-in coloca pressão máxima sobre o abridor sem deixar você comprometido no pós-flop.`,
+            raise: baseSc.raise,
+            call: baseSc.heroPos === 'BB' ? baseSc.call : new Set([...baseSc.call].filter(h => h !== '44' && h !== '55' && h !== '65s'))
+          });
+        }
+      }
+
+      // Mid Stack (36 - 79 bb)
+      if (bb < 80) {
+        const openSz = baseSc.heroPos === 'SB' ? '2.8 bb' : '2.2 bb';
+        return Object.assign({}, baseSc, {
+          raiseLabel: baseSc.group === 'RFI' ? `Abrir ${openSz}` : `3-Bet (${bb <= 50 ? '6.5 bb' : '7.5 bb'})`,
+          title: `${baseSc.title.split('—')[0].trim()} (${bb} bb)`,
+          desc: `Com ${bb} bb efetivos, o SPR pós-flop é menor: Top Pairs ganham valor e mãos puramente especulativas pedem mais cautela.`
+        });
+      }
+
+      // Deep Stack (131+ bb, e.g. 200 bb)
+      const deepRaise = new Set([...baseSc.raise]);
+      if (baseSc.group === 'RFI' && (baseSc.heroPos === 'LJ' || baseSc.heroPos === 'HJ' || baseSc.heroPos === 'CO' || baseSc.heroPos === 'BTN')) {
+        ['22', '33', '44', '54s', '43s', '64s', '75s'].forEach(h => deepRaise.add(h));
+      }
+      const openDeep = baseSc.heroPos === 'SB' ? '3.5 bb' : '3.0 bb';
+      return Object.assign({}, baseSc, {
+        raiseLabel: baseSc.group === 'RFI' ? `Abrir ${openDeep}` : (baseSc.heroPos === 'BB' || baseSc.heroPos === 'SB' ? '3-Bet 12 bb' : '3-Bet 9.0 bb'),
+        title: `${baseSc.heroPos}${baseSc.openerPos ? ' vs ' + baseSc.openerPos : ' — Open ' + openDeep} (${bb} bb Deep)`,
+        desc: `Com ${bb} bb Deep Stack, aberturas maiores (${openDeep}) constroem potes para os nuts; mãos suited e pares ganham enormes Implied Odds, enquanto Top Pair de uma carta exige cautela.`,
+        raise: deepRaise
+      });
+    }
+
     // =========================================================================
     // 3. POSTFLOP SCENARIOS (SOLVER-BASED GAMEPLAN WITH SUIT ISOMORPHISM)
     // =========================================================================
@@ -1189,7 +1817,14 @@
     const STORAGE_KEY = 'poker_trainer_br_v1';
     const state = {
       activeTab: 'home',
+      tableSize: 6,
+      stackBb: 100,
       fourColorDeck: true,
+      tableMap: {
+        selectedPos: 'BTN',
+        orderMode: 'preflop',
+        dealerOffset: 0
+      },
       soundEnabled: true,
       stats: {
         streak: 0,
@@ -1203,7 +1838,18 @@
           math: { played: 0, correct: 0 },
           ranking: { played: 0, correct: 0 }
         },
+        leaks: {},
+        tendencies: { loose: 0, tight: 0, passive: 0, aggressive: 0 },
         mistakes: []
+      },
+      advisor: {
+        tableSize: 6,
+        heroPos: 'BTN',
+        situation: 'FACING_OPEN',
+        vilPos: 'LJ',
+        hero: ['As', 'Qs'],
+        board: [null, null, null, null, null],
+        activeSlot: { group: 'board', idx: 0 }
       },
       guidedSession: null, // { type: 'daily' | 'mistakes', step: 0, total: 10, correct: 0, queue: [] }
       preflop: {
@@ -1257,10 +1903,19 @@
         const raw = localStorage.getItem(STORAGE_KEY);
         if (raw) {
           const parsed = JSON.parse(raw);
+          if (parsed.tableSize === 6 || parsed.tableSize === 8) {
+            state.tableSize = parsed.tableSize;
+            state.advisor.tableSize = parsed.tableSize;
+          }
+          if (typeof parsed.stackBb === 'number' && parsed.stackBb >= 5 && parsed.stackBb <= 300) {
+            state.stackBb = parsed.stackBb;
+          }
           if (typeof parsed.fourColorDeck === 'boolean') state.fourColorDeck = parsed.fourColorDeck;
           if (typeof parsed.soundEnabled === 'boolean') state.soundEnabled = parsed.soundEnabled;
           if (parsed.stats) {
             state.stats = Object.assign(state.stats, parsed.stats);
+            if (!state.stats.leaks) state.stats.leaks = {};
+            if (!state.stats.tendencies) state.stats.tendencies = { loose: 0, tight: 0, passive: 0, aggressive: 0 };
           }
         }
       } catch (e) {
@@ -1275,6 +1930,8 @@
     function saveState() {
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify({
+          tableSize: state.tableSize,
+          stackBb: state.stackBb,
           fourColorDeck: state.fourColorDeck,
           soundEnabled: state.soundEnabled,
           stats: state.stats
@@ -1384,7 +2041,16 @@
     // =========================================================================
     // 7. RECORDING PROGRESS, DAILY DRILLS & SPACED REPETITION
     // =========================================================================
-    function recordAttempt(mode, isCorrect, mistakePayload) {
+    function logLeakTag(leakId, tendencyKey) {
+      if (!leakId) return;
+      if (!state.stats.leaks) state.stats.leaks = {};
+      state.stats.leaks[leakId] = (state.stats.leaks[leakId] || 0) + 1;
+      if (tendencyKey && state.stats.tendencies && state.stats.tendencies[tendencyKey] !== undefined) {
+        state.stats.tendencies[tendencyKey] += 1;
+      }
+    }
+
+    function recordAttempt(mode, isCorrect, mistakePayload, leakTag, tendencyKey) {
       const m = state.stats.byMode[mode];
       m.played += 1;
       if (isCorrect) {
@@ -1399,6 +2065,7 @@
         state.stats.streak = 0;
         state.stats.xp += 4;
         playTone('wrong');
+        if (leakTag) logLeakTag(leakTag, tendencyKey);
         if (mistakePayload) {
           const exists = state.stats.mistakes.some(item => item.sig === mistakePayload.sig);
           if (!exists) {
@@ -1426,8 +2093,18 @@
     function updateHeaderAndDashboard() {
       document.getElementById('hdr-streak').textContent = String(state.stats.streak);
       document.getElementById('hdr-daily').textContent = `${state.stats.dailyDone}/15`;
+      document.getElementById('lbl-table-size').textContent = `${state.tableSize}-Max`;
+      document.getElementById('hdr-mode-badge').textContent = `${state.tableSize}-Max • ${state.stackBb} bb`;
+      const nearestPreset = [10, 15, 25, 50, 100, 200].reduce((a, b) => Math.abs(b - state.stackBb) < Math.abs(a - state.stackBb) ? b : a);
+      const hdrSel = document.getElementById('hdr-stack-select');
+      if (hdrSel) hdrSel.value = String(nearestPreset);
+      const pfSel = document.getElementById('pf-stack-select');
+      if (pfSel) pfSel.value = String(nearestPreset);
       document.getElementById('lbl-deck-colors').textContent = state.fourColorDeck ? '4 Cores' : '2 Cores';
       document.getElementById('icon-sound').textContent = state.soundEnabled ? '🔊' : '🔇';
+      document.querySelectorAll('.opt-8max').forEach(el => {
+        el.hidden = state.tableSize !== 8;
+      });
 
       // Home KPIs
       const dailyPct = Math.min(100, Math.round((state.stats.dailyDone / 15) * 100));
@@ -1510,19 +2187,32 @@
     // =========================================================================
     // 8. NAVIGATION & GUIDED SESSIONS (DAILY DRILL / MISTAKE REVIEW)
     // =========================================================================
+    function scrollModeNav(deltaPx) {
+      const nav = document.getElementById('top-mode-nav');
+      if (nav) nav.scrollBy({ left: deltaPx, behavior: 'smooth' });
+    }
+
     function switchTab(tabId) {
       state.activeTab = tabId;
-      const tabs = ['home', 'preflop', 'postflop', 'math', 'ranking', 'ranges', 'tools'];
+      const tabs = ['home', 'tablemap', 'preflop', 'postflop', 'math', 'ranking', 'advisor', 'coach', 'ranges', 'tools'];
       for (const t of tabs) {
         const sec = document.getElementById('view-' + t);
         if (sec) sec.classList.toggle('hidden', t !== tabId);
       }
+      let activeBtnEl = null;
       document.querySelectorAll('.nav-tab').forEach(btn => {
         const active = btn.getAttribute('data-nav') === tabId;
+        if (active) activeBtnEl = btn;
         btn.className = 'nav-tab px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold whitespace-nowrap transition ' +
           (active ? 'bg-emerald-500 text-slate-950 shadow' : 'text-slate-300 hover:bg-slate-800/80 hover:text-white');
       });
+      if (activeBtnEl && activeBtnEl.scrollIntoView) {
+        try { activeBtnEl.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' }); } catch (e) {}
+      }
+      if (tabId === 'tablemap') renderTableMap();
       if (tabId === 'ranges') renderRangeViewer();
+      if (tabId === 'advisor') renderAdvisorUI();
+      if (tabId === 'coach') renderCoachDashboard();
       if (tabId === 'tools') {
         renderCalcUI();
         renderGlossary();
@@ -1672,13 +2362,13 @@
         scenario = PREFLOP_SCENARIOS[forced.scenarioId];
         notation = forced.notation;
       } else {
-        const allKeys = Object.keys(PREFLOP_SCENARIOS);
+        const allKeys = Object.keys(PREFLOP_SCENARIOS).filter(k => (PREFLOP_SCENARIOS[k].minPlayers || 6) <= state.tableSize);
         let pool = allKeys;
         if (state.preflop.filter === 'RFI_ALL') {
           pool = allKeys.filter(k => PREFLOP_SCENARIOS[k].group === 'RFI');
         } else if (state.preflop.filter === 'FACING_ALL') {
           pool = allKeys.filter(k => PREFLOP_SCENARIOS[k].group === 'FACING');
-        } else if (PREFLOP_SCENARIOS[state.preflop.filter]) {
+        } else if (PREFLOP_SCENARIOS[state.preflop.filter] && (PREFLOP_SCENARIOS[state.preflop.filter].minPlayers || 6) <= state.tableSize) {
           pool = [state.preflop.filter];
         }
         const chosenKey = pool[Math.floor(Math.random() * pool.length)];
@@ -1694,9 +2384,10 @@
         }
       }
 
+      const effScenario = getEffectiveScenario(scenario, state.stackBb);
       const holeCards = pickCardsForNotation(notation);
-      const correctAction = getScenarioAction(scenario, notation);
-      state.preflop.current = { scenario, notation, holeCards, correctAction };
+      const correctAction = getScenarioAction(effScenario, notation);
+      state.preflop.current = { baseScenarioId: scenario.id, scenario: effScenario, notation, holeCards, correctAction };
       renderPreflopTable();
     }
 
@@ -1705,7 +2396,9 @@
       if (!cur) return;
       const sc = cur.scenario;
 
-      document.getElementById('pf-spot-badge').textContent = `${sc.title} • Stacks 100 bb`;
+      const is8MaxSpot = state.tableSize === 8 || (sc.minPlayers === 8);
+      const activeSeats = is8MaxSpot ? POSITIONS_8MAX : POSITIONS_6MAX;
+      document.getElementById('pf-spot-badge').textContent = `${sc.title} • Mesa ${is8MaxSpot ? '8-Max' : '6-Max'} (${state.stackBb} bb)`;
       document.getElementById('pf-pot-size').textContent = `${sc.potBefore.toFixed(1)} bb`;
       document.getElementById('pf-hero-pos-label').textContent = sc.heroPos;
       document.getElementById('pf-hand-combo-label').textContent = cur.notation;
@@ -1713,16 +2406,21 @@
         ? `${sc.openerPos} abriu aumento para 2.5 bb. A ação chega até você no ${sc.heroPos}.`
         : `Todos antes de você desistiram. Você é o primeiro a entrar no pote no ${sc.heroPos}.`;
 
-      // Render 6 seats: top = LJ, HJ, CO; bottom = SB, BTN, BB
-      const topOrder = ['LJ', 'HJ', 'CO'];
-      const botOrder = ['SB', 'BTN', 'BB'];
+      const topOrder = is8MaxSpot ? ['UTG', 'UTG+1', 'LJ', 'HJ'] : ['LJ', 'HJ', 'CO'];
+      const botOrder = is8MaxSpot ? ['SB', 'BTN', 'CO', 'BB'] : ['SB', 'BTN', 'BB'];
+      document.getElementById('pf-seats-top').className = is8MaxSpot
+        ? 'grid grid-cols-2 sm:grid-cols-4 gap-2 max-w-2xl mx-auto w-full'
+        : 'grid grid-cols-3 gap-2 max-w-2xl mx-auto w-full';
+      document.getElementById('pf-seats-bottom').className = is8MaxSpot
+        ? 'grid grid-cols-2 sm:grid-cols-4 gap-2 max-w-2xl mx-auto w-full items-end'
+        : 'grid grid-cols-3 gap-2 max-w-2xl mx-auto w-full items-end';
 
       function seatHTML(pos) {
         const isHero = pos === sc.heroPos;
         const isOpener = pos === sc.openerPos;
-        const heroIdx = POSITIONS_6MAX.indexOf(sc.heroPos);
-        const posIdx = POSITIONS_6MAX.indexOf(pos);
-        let status = '100 bb';
+        const heroIdx = activeSeats.indexOf(sc.heroPos);
+        const posIdx = activeSeats.indexOf(pos);
+        let status = `${state.stackBb} bb`;
         let chip = '';
         if (pos === 'SB' && !isHero && !isOpener && posIdx > heroIdx) chip = '0.5 bb';
         if (pos === 'BB' && !isHero) chip = '1.0 bb';
@@ -1776,11 +2474,39 @@
       if (isCorrect) state.preflop.sessionCorrect += 1;
       document.getElementById('pf-session-score').textContent = `${state.preflop.sessionCorrect}/${state.preflop.sessionPlayed}`;
 
+      let pfLeak = null, pfTend = null;
+      if (!isCorrect) {
+        const hp = cur.scenario.heroPos;
+        const isEP = (hp === 'UTG' || hp === 'UTG+1' || hp === 'LJ' || hp === 'HJ');
+        if (cur.scenario.group === 'RFI') {
+          if (cur.correctAction === 'FOLD') {
+            pfLeak = isEP ? 'pf_ep_loose' : 'pf_bb_overcall';
+            pfTend = 'loose';
+          } else {
+            pfLeak = isEP ? 'pf_late_tight' : 'pf_late_tight';
+            pfTend = 'tight';
+          }
+        } else {
+          if (hp === 'BB' && action === 'FOLD') {
+            pfLeak = 'pf_bb_overfold';
+            pfTend = 'tight';
+          } else if ((hp === 'BB' || hp === 'SB') && cur.correctAction === 'FOLD') {
+            pfLeak = 'pf_bb_overcall';
+            pfTend = 'loose';
+          } else if (cur.correctAction === 'RAISE') {
+            pfLeak = 'pf_passive_3bet';
+            pfTend = 'passive';
+          } else {
+            pfLeak = 'pf_bb_overcall';
+            pfTend = 'loose';
+          }
+        }
+      }
       recordAttempt('preflop', isCorrect, {
         sig: `pf:${cur.scenario.id}:${cur.notation}`,
         mode: 'preflop',
         data: { scenarioId: cur.scenario.id, notation: cur.notation }
-      });
+      }, pfLeak, pfTend);
 
       const actionPT = { FOLD: 'Desistir (Fold)', CALL: 'Pagar (Call)', RAISE: cur.scenario.raiseLabel };
       const fb = document.getElementById('pf-feedback');
@@ -1949,6 +2675,12 @@
         { matchup: 'CO vs BB', heroPos: 'CO', vilPos: 'BB', heroIP: true, heroRange: PREFLOP_SCENARIOS.CO_RFI.raise, vilRange: PREFLOP_SCENARIOS.BB_vs_BTN.call },
         { matchup: 'BTN vs LJ', heroPos: 'BTN', vilPos: 'LJ', heroIP: true, heroRange: PREFLOP_SCENARIOS.BTN_vs_LJ.call, vilRange: PREFLOP_SCENARIOS.LJ_RFI.raise }
       ];
+      if (state.tableSize === 8) {
+        matchups.push(
+          { matchup: 'BTN vs UTG (8-Max)', heroPos: 'BTN', vilPos: 'UTG', heroIP: true, heroRange: PREFLOP_SCENARIOS.BTN_vs_UTG.call, vilRange: PREFLOP_SCENARIOS.UTG_RFI.raise },
+          { matchup: 'BB vs UTG (8-Max)', heroPos: 'BB', vilPos: 'UTG', heroIP: false, heroRange: PREFLOP_SCENARIOS.BB_vs_UTG.call, vilRange: PREFLOP_SCENARIOS.UTG_RFI.raise }
+        );
+      }
       const streets = streetFilter === 'ALL' ? ['Flop', 'Turn', 'River'] : [streetFilter];
 
       for (let attempt = 0; attempt < 40; attempt++) {
@@ -2189,6 +2921,24 @@
       if (isCorrect) state.postflop.sessionCorrect += 1;
       document.getElementById('post-session-score').textContent = `${state.postflop.sessionCorrect}/${state.postflop.sessionPlayed}`;
 
+      let postLeak = null, postTend = null;
+      if (!isCorrect) {
+        const rightOpt = cur.item.options[cur.item.correctIdx].toLowerCase();
+        const chosenOpt = cur.item.options[choiceIdx].toLowerCase();
+        if (rightOpt.includes('desistir') || rightOpt.includes('fold')) {
+          postLeak = 'post_calling_station';
+          postTend = 'loose';
+        } else if (chosenOpt.includes('desistir') || chosenOpt.includes('fold')) {
+          postLeak = 'post_overfold';
+          postTend = 'tight';
+        } else if (chosenOpt.includes('mesa') || chosenOpt.includes('check') || chosenOpt.includes('apenas pagar')) {
+          postLeak = 'post_missed_value';
+          postTend = 'passive';
+        } else {
+          postLeak = 'post_calling_station';
+          postTend = 'aggressive';
+        }
+      }
       recordAttempt('postflop', isCorrect, {
         sig: cur.sig,
         mode: 'postflop',
@@ -2206,7 +2956,7 @@
             explanation: cur.item.explanation
           }
         }
-      });
+      }, postLeak, postTend);
 
       const fb = document.getElementById('post-feedback');
       const fbTitle = document.getElementById('post-feedback-title');
@@ -2330,7 +3080,7 @@
         sig: `math:potodds:${cur.tpl.id}:${cur.betIdx}`,
         mode: 'math',
         data: { submode: 'potodds', tplId: cur.tpl.id, betIdx: cur.betIdx }
-      });
+      }, isCorrect ? null : 'math_odds_leak', choseCall ? 'loose' : 'tight');
 
       const finalPot = cur.betCfg.pot + cur.betCfg.bet + cur.betCfg.bet;
       const ruleUsed = cur.tpl.street === 'Flop' ? `${cur.tpl.outs} × 4 ≈ ${cur.tpl.outs * 4}% (exato: ~${cur.realEq}%)` : `${cur.tpl.outs} × 2 ≈ ${cur.tpl.outs * 2}% (exato: ~${cur.realEq}%)`;
@@ -2357,7 +3107,7 @@
         sig: `math:outs:${cur.tpl.id}`,
         mode: 'math',
         data: { submode: 'outs', tplId: cur.tpl.id, betIdx: cur.betIdx }
-      });
+      }, isCorrect ? null : 'math_odds_leak', null);
 
       const mult = cur.tpl.street === 'Flop' ? 4 : 2;
       showMathFeedback(
@@ -2500,7 +3250,7 @@
       document.getElementById('rank-session-score').textContent = `${state.ranking.sessionCorrect}/${state.ranking.sessionPlayed}`;
 
       renderRankingWinnerUI(true);
-      recordAttempt('ranking', isCorrect, null);
+      recordAttempt('ranking', isCorrect, null, isCorrect ? null : 'rank_board_vision', null);
 
       const labelMap = { P1: 'Jogador 1 vence', P2: 'Jogador 2 vence', TIE: 'Empate (Split Pot)' };
       showRankFeedback(
@@ -2521,7 +3271,7 @@
       document.getElementById('rank-session-score').textContent = `${state.ranking.sessionCorrect}/${state.ranking.sessionPlayed}`;
 
       renderRankingNameUI(true);
-      recordAttempt('ranking', isCorrect, null);
+      recordAttempt('ranking', isCorrect, null, isCorrect ? null : 'rank_board_vision', null);
 
       showRankFeedback(
         isCorrect,
@@ -2551,7 +3301,10 @@
     // 13. RANGE VIEWER 13x13
     // =========================================================================
     function renderRangeViewer() {
-      const allKeys = Object.keys(PREFLOP_SCENARIOS);
+      const allKeys = Object.keys(PREFLOP_SCENARIOS).filter(k => (PREFLOP_SCENARIOS[k].minPlayers || 6) <= state.tableSize);
+      if (!allKeys.includes(state.ranges.selectedScenarioId)) {
+        state.ranges.selectedScenarioId = state.tableSize === 8 ? 'UTG_RFI' : 'BTN_RFI';
+      }
       const rfiKeys = allKeys.filter(k => PREFLOP_SCENARIOS[k].group === 'RFI');
       const facingKeys = allKeys.filter(k => PREFLOP_SCENARIOS[k].group === 'FACING');
 
@@ -2568,7 +3321,7 @@
       document.getElementById('range-pills-rfi').innerHTML = rfiKeys.map(pillBtn).join('');
       document.getElementById('range-pills-facing').innerHTML = facingKeys.map(pillBtn).join('');
 
-      const sc = PREFLOP_SCENARIOS[state.ranges.selectedScenarioId];
+      const sc = getEffectiveScenario(PREFLOP_SCENARIOS[state.ranges.selectedScenarioId], state.stackBb);
       document.getElementById('range-info-title').textContent = sc.title;
       document.getElementById('range-info-desc').textContent = sc.desc;
 
@@ -2609,7 +3362,7 @@
     function inspectRangeCell(hand, skipGridRefresh) {
       state.ranges.selectedHand = hand;
       if (!skipGridRefresh) renderRangeViewer();
-      const sc = PREFLOP_SCENARIOS[state.ranges.selectedScenarioId];
+      const sc = getEffectiveScenario(PREFLOP_SCENARIOS[state.ranges.selectedScenarioId], state.stackBb);
       const act = getScenarioAction(sc, hand);
       const combos = getComboCount(hand);
       const typeDesc = hand.length === 2 ? 'Par de mão (Pocket Pair)' : (hand[2] === 's' ? 'Mão Suited (mesmo naipe)' : 'Mão Offsuit (naipes diferentes)');
@@ -2838,6 +3591,938 @@
       `).join('') || '<p class="text-xs text-slate-500">Nenhum termo encontrado.</p>';
     }
 
+
+    // =========================================================================
+    // 14B. HAND & SPOT ADVISOR (6-MAX & 8-MAX REAL MONTE CARLO SIMULATION)
+    // =========================================================================
+    function holeCardsToNotation(c1Code, c2Code) {
+      if (!c1Code || !c2Code) return '—';
+      const c1 = cardFromCode(c1Code);
+      const c2 = cardFromCode(c2Code);
+      if (c1.rank === c2.rank) return c1.rankChar + c2.rankChar;
+      const hi = c1.rank > c2.rank ? c1 : c2;
+      const lo = c1.rank > c2.rank ? c2 : c1;
+      return hi.rankChar + lo.rankChar + (c1.suit === c2.suit ? 's' : 'o');
+    }
+
+    function getPositionRfiRange(pos, tableSize) {
+      if (pos === 'UTG') return PREFLOP_SCENARIOS.UTG_RFI.raise;
+      if (pos === 'UTG+1') return PREFLOP_SCENARIOS.UTG1_RFI.raise;
+      if (pos === 'LJ') return PREFLOP_SCENARIOS.LJ_RFI.raise;
+      if (pos === 'HJ') return PREFLOP_SCENARIOS.HJ_RFI.raise;
+      if (pos === 'CO') return PREFLOP_SCENARIOS.CO_RFI.raise;
+      if (pos === 'BTN') return PREFLOP_SCENARIOS.BTN_RFI.raise;
+      if (pos === 'SB') return PREFLOP_SCENARIOS.SB_RFI.raise;
+      // BB default defense range when villain is BB
+      return tableSize === 8 ? PREFLOP_SCENARIOS.BB_vs_LJ.call : PREFLOP_SCENARIOS.BB_vs_BTN.call;
+    }
+
+    function getThreeBetRangeForPos(pos, tableSize) {
+      if (pos === 'UTG' || pos === 'UTG+1' || pos === 'LJ') {
+        return parseRangeNotation('QQ+, AKs, AQs, A5s, AKo');
+      }
+      if (pos === 'HJ' || pos === 'CO') {
+        return parseRangeNotation('TT+, AJs+, A5s-A4s, KQs, AKo, AQo');
+      }
+      return parseRangeNotation('99+, ATs+, A5s-A2s, KJs+, QJs, JTs, T9s, AQo+, KQo');
+    }
+
+    function resolvePreflopChartForAdvisor(tableSize, heroPos, situation, vilPos) {
+      if (situation === 'RFI') {
+        const map = {
+          'UTG': PREFLOP_SCENARIOS.UTG_RFI,
+          'UTG+1': PREFLOP_SCENARIOS.UTG1_RFI,
+          'LJ': PREFLOP_SCENARIOS.LJ_RFI,
+          'HJ': PREFLOP_SCENARIOS.HJ_RFI,
+          'CO': PREFLOP_SCENARIOS.CO_RFI,
+          'BTN': PREFLOP_SCENARIOS.BTN_RFI,
+          'SB': PREFLOP_SCENARIOS.SB_RFI
+        };
+        return map[heroPos] || PREFLOP_SCENARIOS.BTN_RFI;
+      }
+      if (situation === 'FACING_3BET') {
+        const isTight3B = (vilPos === 'UTG' || vilPos === 'UTG+1' || vilPos === 'LJ' || vilPos === 'HJ');
+        return {
+          title: `${heroPos} enfrentando 3-Bet de ${vilPos}`,
+          raiseLabel: '4-Bet (22 bb / All-in)',
+          raise: isTight3B ? parseRangeNotation('KK+, AKs, A5s, AKo') : parseRangeNotation('QQ+, AKs, A5s-A4s, AKo'),
+          call: isTight3B ? parseRangeNotation('QQ-TT, AQs, KQs') : parseRangeNotation('JJ-88, AQs-AJs, KQs, QJs, JTs, AQo')
+        };
+      }
+      // FACING_OPEN
+      const earlyVil = (vilPos === 'UTG' || vilPos === 'UTG+1');
+      const midVil = (vilPos === 'LJ' || vilPos === 'HJ');
+      if (heroPos === 'BB') {
+        if (earlyVil) return PREFLOP_SCENARIOS.BB_vs_UTG;
+        if (midVil) return PREFLOP_SCENARIOS.BB_vs_LJ;
+        return PREFLOP_SCENARIOS.BB_vs_BTN;
+      }
+      if (heroPos === 'BTN') {
+        if (earlyVil) return PREFLOP_SCENARIOS.BTN_vs_UTG;
+        if (midVil) return PREFLOP_SCENARIOS.BTN_vs_LJ;
+        return PREFLOP_SCENARIOS.BTN_vs_CO;
+      }
+      if (heroPos === 'SB') {
+        if (earlyVil || midVil) return PREFLOP_SCENARIOS.CO_vs_LJ;
+        return PREFLOP_SCENARIOS.SB_vs_BTN;
+      }
+      if (earlyVil) return PREFLOP_SCENARIOS.LJ_vs_UTG;
+      return PREFLOP_SCENARIOS.CO_vs_LJ;
+    }
+
+    function setAdvisorTableSize(n) {
+      state.advisor.tableSize = n;
+      state.tableSize = n;
+      saveState();
+      updateHeaderAndDashboard();
+      const positions = getActivePositions(n);
+      if (!positions.includes(state.advisor.heroPos)) state.advisor.heroPos = 'BTN';
+      if (!positions.includes(state.advisor.vilPos) || state.advisor.vilPos === state.advisor.heroPos) {
+        state.advisor.vilPos = state.advisor.heroPos === 'BB' ? 'BTN' : 'BB';
+      }
+      dealPreflopHand();
+      renderAdvisorUI();
+    }
+
+    function populateAdvisorPositionSelects() {
+      const n = state.advisor.tableSize;
+      const positions = getActivePositions(n);
+      document.getElementById('btn-adv-6max').className = 'px-3 py-2 rounded-xl text-xs font-bold border transition ' +
+        (n === 6 ? 'bg-emerald-500 text-slate-950 border-emerald-400' : 'bg-slate-950 text-slate-300 border-slate-700');
+      document.getElementById('btn-adv-8max').className = 'px-3 py-2 rounded-xl text-xs font-bold border transition ' +
+        (n === 8 ? 'bg-emerald-500 text-slate-950 border-emerald-400' : 'bg-slate-950 text-slate-300 border-slate-700');
+
+      const heroSel = document.getElementById('adv-hero-pos');
+      const vilSel = document.getElementById('adv-vil-pos');
+      heroSel.innerHTML = positions.map(p => `<option value="${p}" ${p === state.advisor.heroPos ? 'selected' : ''}>${p}</option>`).join('');
+      const vilPositions = positions.filter(p => p !== state.advisor.heroPos);
+      if (!vilPositions.includes(state.advisor.vilPos)) state.advisor.vilPos = vilPositions[0];
+      vilSel.innerHTML = vilPositions.map(p => `<option value="${p}" ${p === state.advisor.vilPos ? 'selected' : ''}>${p}</option>`).join('');
+    }
+
+    function onAdvisorParamChange(which) {
+      if (which === 'heroPos') {
+        state.advisor.heroPos = document.getElementById('adv-hero-pos').value;
+        populateAdvisorPositionSelects();
+      } else if (which === 'vilPos') {
+        state.advisor.vilPos = document.getElementById('adv-vil-pos').value;
+      } else if (which === 'situation') {
+        state.advisor.situation = document.getElementById('adv-situation').value;
+        const bCount = state.advisor.board.filter(Boolean).length;
+        if (bCount === 0) {
+          if (state.advisor.situation === 'RFI') {
+            document.getElementById('adv-pot').value = '1.5';
+            document.getElementById('adv-bet').value = '0';
+          } else if (state.advisor.situation === 'FACING_OPEN') {
+            document.getElementById('adv-pot').value = '1.5';
+            document.getElementById('adv-bet').value = '2.5';
+          } else if (state.advisor.situation === 'FACING_3BET') {
+            document.getElementById('adv-pot').value = '4.0';
+            document.getElementById('adv-bet').value = '7.5';
+          }
+        }
+      }
+      runSpotAdvisor();
+    }
+
+    function setAdvisorQuickBet(fraction) {
+      const potVal = Math.max(1, parseFloat(document.getElementById('adv-pot').value) || 6);
+      const betVal = fraction === 0 ? 0 : Number((potVal * fraction).toFixed(1));
+      document.getElementById('adv-bet').value = String(betVal);
+      runSpotAdvisor();
+    }
+
+    function getUsedAdvisorCodes() {
+      const used = new Set();
+      state.advisor.hero.forEach(c => { if (c) used.add(c); });
+      state.advisor.board.forEach(c => { if (c) used.add(c); });
+      return used;
+    }
+
+    function selectAdvisorSlot(group, idx) {
+      state.advisor.activeSlot = { group, idx };
+      renderAdvisorUI(true);
+    }
+
+    function clearSelectedAdvisorSlot() {
+      const { group, idx } = state.advisor.activeSlot;
+      state.advisor[group][idx] = null;
+      renderAdvisorUI();
+    }
+
+    function clearAdvisorBoard() {
+      state.advisor.board = [null, null, null, null, null];
+      state.advisor.activeSlot = { group: 'board', idx: 0 };
+      renderAdvisorUI();
+    }
+
+    function pickAdvisorCard(code) {
+      const used = getUsedAdvisorCodes();
+      if (used.has(code)) return;
+      const { group, idx } = state.advisor.activeSlot;
+      state.advisor[group][idx] = code;
+      playTone('click');
+
+      if (group === 'hero' && idx === 0) state.advisor.activeSlot = { group: 'hero', idx: 1 };
+      else if (group === 'hero' && idx === 1) state.advisor.activeSlot = { group: 'board', idx: 0 };
+      else if (group === 'board' && idx < 4) state.advisor.activeSlot = { group: 'board', idx: idx + 1 };
+
+      renderAdvisorUI();
+    }
+
+    function renderAdvisorUI(skipSim) {
+      populateAdvisorPositionSelects();
+      const { group, idx } = state.advisor.activeSlot;
+      const streetHint = group === 'hero'
+        ? `Sua Mão — Carta ${idx + 1}`
+        : `Bordo — Carta ${idx + 1} (${idx < 3 ? 'Flop' : (idx === 3 ? 'Turn' : 'River')})`;
+      document.getElementById('adv-active-slot-label').textContent = streetHint;
+
+      function slotBtn(g, i, code) {
+        const isSel = group === g && idx === i;
+        const ring = isSel ? 'ring-2 ring-emerald-400 rounded-xl p-0.5' : 'p-0.5 opacity-95 hover:opacity-100';
+        return `<button type="button" onclick="selectAdvisorSlot('${g}', ${i})" class="${ring} transition focus:outline-none">${renderCardHTML(code, 'sm')}</button>`;
+      }
+
+      document.getElementById('adv-slots-hero').innerHTML = state.advisor.hero.map((c, i) => slotBtn('hero', i, c)).join('');
+      document.getElementById('adv-slots-board').innerHTML = state.advisor.board.map((c, i) => slotBtn('board', i, c)).join('');
+      document.getElementById('adv-hand-notation').textContent = holeCardsToNotation(state.advisor.hero[0], state.advisor.hero[1]);
+
+      const used = getUsedAdvisorCodes();
+      const deckRows = SUITS.map(s => {
+        const btns = RANKS.map(r => {
+          const code = r + s.id;
+          const isUsed = used.has(code);
+          const col = suitColorClass(s.id);
+          return `<button type="button" ${isUsed ? 'disabled' : ''} onclick="pickAdvisorCard('${code}')" class="py-1.5 px-1 rounded border text-xs font-bold transition ${isUsed ? 'bg-slate-900 border-slate-800 text-slate-700 cursor-not-allowed' : 'bg-white hover:scale-105 border-slate-300 ' + col}">${r === 'T' ? '10' : r}${s.symbol}</button>`;
+        }).join('');
+        return `<div class="grid grid-cols-13 gap-1" style="display:grid;grid-template-columns:repeat(13,minmax(0,1fr));">${btns}</div>`;
+      }).join('');
+      document.getElementById('adv-deck-grid').innerHTML = deckRows;
+
+      if (!skipSim) runSpotAdvisor();
+    }
+
+    function simulateExactVsRangeMonteCarlo(heroCodes, boardCodes, vilRangeSet, iterations) {
+      const used = new Set([...heroCodes, ...boardCodes]);
+      const heroCards = heroCodes.map(cardFromCode);
+      const boardCards = boardCodes.map(cardFromCode);
+      const fullDeck = makeFullDeck().filter(c => !used.has(c.code));
+
+      // Enumerate all concrete non-overlapping 2-card combos in Villain's range
+      const validVilCombos = [];
+      for (let i = 0; i < fullDeck.length - 1; i++) {
+        for (let j = i + 1; j < fullDeck.length; j++) {
+          const not = holeCardsToNotation(fullDeck[i].code, fullDeck[j].code);
+          if (vilRangeSet.has(not)) {
+            validVilCombos.push([fullDeck[i], fullDeck[j]]);
+          }
+        }
+      }
+
+      if (validVilCombos.length === 0) {
+        return { equity: 50, winPct: 50, tiePct: 0, validCombosCount: 0 };
+      }
+
+      const needed = 5 - boardCards.length;
+      let wins = 0, ties = 0, total = 0;
+
+      if (needed === 0) {
+        const eh = evaluateBestHand([...boardCards, ...heroCards]);
+        for (const [v0, v1] of validVilCombos) {
+          const ev = evaluateBestHand([...boardCards, v0, v1]);
+          total++;
+          if (eh.score > ev.score) wins++;
+          else if (eh.score === ev.score) ties++;
+        }
+      } else {
+        const runs = iterations || 1800;
+        for (let it = 0; it < runs; it++) {
+          const [v0, v1] = validVilCombos[Math.floor(Math.random() * validVilCombos.length)];
+          const pool = [];
+          for (let k = 0; k < fullDeck.length; k++) {
+            const c = fullDeck[k];
+            if (c.code !== v0.code && c.code !== v1.code) pool.push(c);
+          }
+          for (let k = 0; k < needed; k++) {
+            const rIdx = k + Math.floor(Math.random() * (pool.length - k));
+            const tmp = pool[k];
+            pool[k] = pool[rIdx];
+            pool[rIdx] = tmp;
+          }
+          const simBoard = boardCards.concat(pool.slice(0, needed));
+          const eh = evaluateBestHand([...simBoard, ...heroCards]);
+          const ev = evaluateBestHand([...simBoard, v0, v1]);
+          total++;
+          if (eh.score > ev.score) wins++;
+          else if (eh.score === ev.score) ties++;
+        }
+      }
+
+      const winPct = (wins / total) * 100;
+      const tiePct = (ties / total) * 100;
+      return {
+        equity: winPct + tiePct * 0.5,
+        winPct,
+        tiePct,
+        validCombosCount: validVilCombos.length
+      };
+    }
+
+    function runSpotAdvisor() {
+      const hCodes = state.advisor.hero.filter(Boolean);
+      const bCodes = state.advisor.board.filter(Boolean);
+      const nPlayers = state.advisor.tableSize;
+      const heroPos = state.advisor.heroPos;
+      const vilPos = state.advisor.vilPos;
+      const situation = state.advisor.situation;
+      const potBefore = Math.max(0.5, parseFloat(document.getElementById('adv-pot').value) || 1.5);
+      const betFacing = Math.max(0, parseFloat(document.getElementById('adv-bet').value) || 0);
+      const effStack = Math.max(1, parseFloat(document.getElementById('adv-stack').value) || 100);
+
+      if (hCodes.length < 2 || (bCodes.length !== 0 && bCodes.length < 3)) {
+        document.getElementById('adv-verdict-badge').textContent = 'Selecione suas 2 cartas e 0, 3, 4 ou 5 cartas no bordo';
+        document.getElementById('adv-verdict-badge').className = 'text-lg sm:text-xl font-bold text-amber-300 mt-0.5';
+        return;
+      }
+
+      const notation = holeCardsToNotation(hCodes[0], hCodes[1]);
+      // Determine Villain's realistic range based on situation & tableSize
+      let vilRange;
+      let vilRangeLabel;
+      if (situation === 'FACING_3BET') {
+        vilRange = getThreeBetRangeForPos(vilPos, nPlayers);
+        vilRangeLabel = `3-Bet de ${vilPos} (${nPlayers}-Max)`;
+      } else if (situation === 'FACING_OPEN') {
+        vilRange = getPositionRfiRange(vilPos, nPlayers);
+        vilRangeLabel = `Open de ${vilPos} (${nPlayers}-Max)`;
+      } else {
+        // RFI or Hero was aggressor against vilPos caller
+        vilRange = vilPos === 'BB'
+          ? (nPlayers === 8 && (heroPos === 'UTG' || heroPos === 'UTG+1') ? PREFLOP_SCENARIOS.BB_vs_UTG.call : PREFLOP_SCENARIOS.BB_vs_BTN.call)
+          : getPositionRfiRange(vilPos, nPlayers);
+        vilRangeLabel = `Defesa/Range de ${vilPos} (${nPlayers}-Max)`;
+      }
+
+      const sim = simulateExactVsRangeMonteCarlo(hCodes, bCodes, vilRange, 1800);
+      const callCost = bCodes.length === 0 && heroPos === 'BB' && situation === 'FACING_OPEN'
+        ? Math.max(0, betFacing - 1.0)
+        : (bCodes.length === 0 && heroPos === 'SB' && situation === 'FACING_OPEN' ? Math.max(0, betFacing - 0.5) : betFacing);
+
+      const finalPotIfCall = potBefore + betFacing + callCost;
+      const reqEq = callCost > 0 ? (callCost / finalPotIfCall) * 100 : 0;
+      const evMargin = sim.equity - reqEq;
+      const spr = effStack / Math.max(1, potBefore + betFacing);
+
+      document.getElementById('adv-range-pill').textContent = `${vilRangeLabel} • ${sim.validCombosCount} combos ativos`;
+      document.getElementById('adv-metric-eq').textContent = `${sim.equity.toFixed(1)}%`;
+      document.getElementById('adv-metric-eq-sub').textContent = bCodes.length === 5
+        ? `Exato contra ${sim.validCombosCount} combos`
+        : `Vitória: ${sim.winPct.toFixed(1)}% • Empate: ${sim.tiePct.toFixed(1)}%`;
+      document.getElementById('adv-metric-potodds').textContent = callCost > 0 ? `${reqEq.toFixed(1)}%` : '0% (Check)';
+      document.getElementById('adv-metric-potodds-sub').textContent = callCost > 0
+        ? `Pagar ${callCost.toFixed(1)} bb p/ pote ${finalPotIfCall.toFixed(1)} bb`
+        : 'Sem aposta para pagar';
+      document.getElementById('adv-metric-ev').textContent = callCost > 0
+        ? `${evMargin >= 0 ? '+' : ''}${evMargin.toFixed(1)}%`
+        : `Eq. ${sim.equity.toFixed(0)}%`;
+      document.getElementById('adv-metric-spr').textContent = `SPR: ${spr.toFixed(1)} (${effStack} bb efetivos)`;
+
+      const positionsOrder = getActivePositions(nPlayers);
+      const heroInPos = heroPos === 'BTN' || (heroPos !== 'SB' && heroPos !== 'BB' && (vilPos === 'SB' || vilPos === 'BB' || positionsOrder.indexOf(heroPos) > positionsOrder.indexOf(vilPos)));
+
+      let verdict = '';
+      let verdictColor = 'text-emerald-400';
+      let expHTML = '';
+
+      if (bCodes.length === 0) {
+        // PREFLOP VERDICT
+        document.getElementById('adv-street-summary').textContent = `Pré-Flop • Mesa de ${nPlayers} Pessoas (${nPlayers}-Max) • ${notation}`;
+        document.getElementById('adv-metric-hand').textContent = `Pré-Flop: ${notation}`;
+        document.getElementById('adv-metric-outs').textContent = `${getComboCount(notation)} combos no baralho`;
+
+        if (heroPos === 'BB' && situation === 'RFI') {
+          verdict = 'CHECK OPÇÃO / JÁ NO BIG BLIND';
+          verdictColor = 'text-sky-400';
+          expHTML = `<p>Se ninguém aumentou até o Big Blind, você tem opção gratuita de ver o flop ou aumentar por valor (${notation} tem <strong>${sim.equity.toFixed(1)}%</strong> de equidade contra range médio).</p>`;
+        } else {
+          const chart = resolvePreflopChartForAdvisor(nPlayers, heroPos, situation, vilPos);
+          const act = getScenarioAction(chart, notation);
+          if (effStack <= 16 && (act === 'RAISE' || (act === 'CALL' && sim.equity >= 52))) {
+            verdict = `🚀 IR ALL-IN (PUSH ${effStack} bb)`;
+            verdictColor = 'text-emerald-400';
+            expHTML = `<p>Com stack curto de <strong>${effStack} bb</strong> no ${nPlayers}-Max e <strong>${sim.equity.toFixed(1)}%</strong> de equidade contra ${vilRangeLabel}, ir All-in direto maximiza sua Fold Equity e realiza 100% da equidade da mão ${notation}.</p>`;
+          } else if (act === 'RAISE') {
+            const szLabel = situation === 'RFI' ? (heroPos === 'SB' ? '3.0 bb' : '2.5 bb') : (situation === 'FACING_OPEN' ? (heroInPos ? `${(betFacing * 3).toFixed(1)} bb` : `${(betFacing * 4).toFixed(1)} bb`) : '4-Bet 22 bb');
+            verdict = `🚀 AUMENTAR (${szLabel})`;
+            verdictColor = 'text-emerald-400';
+            expHTML = `<p>• <strong>Ação Padrão (${nPlayers}-Max):</strong> Na posição <strong>${heroPos}</strong> (${chart.title}), a mão <strong>${notation}</strong> está dentro do range lucrativo de agressão, apresentando <strong>${sim.equity.toFixed(1)}%</strong> de equidade real contra ${vilRangeLabel}.</p>
+                       <p>• <strong>Dimensionamento:</strong> Use <strong>${szLabel}</strong> para construir o pote com iniciativa${heroInPos ? ' aproveitando sua vantagem posicional pós-flop' : ' compensando jogar fora de posição'}.</p>`;
+          } else if (act === 'CALL') {
+            verdict = `✅ PAGAR (CALL ${callCost.toFixed(1)} bb)`;
+            verdictColor = 'text-sky-400';
+            expHTML = `<p>• <strong>Defesa Lucrativa:</strong> Suas Pot Odds pedem apenas <strong>${reqEq.toFixed(1)}%</strong> e ${notation} possui <strong>${sim.equity.toFixed(1)}%</strong> contra o range de ${vilPos} no ${nPlayers}-Max.</p>
+                       <p>• <strong>Por que não 3-Betar?</strong> Pagar mantém todas as mãos dominadas/blefes do vilão no pote e evita isolar-se contra o topo de 4-bet dele.</p>`;
+          } else {
+            verdict = '🛑 DESISTIR (FOLD)';
+            verdictColor = 'text-rose-400';
+            expHTML = `<p>• <strong>Fora do Range (${nPlayers}-Max):</strong> Em uma mesa de <strong>${nPlayers} jogadores</strong> atuando no <strong>${heroPos}</strong> (${chart.title}), jogar <strong>${notation}</strong> (${sim.equity.toFixed(1)}% de equidade bruta) gera situações dominadas e prejuízo com rake no longo prazo.</p>
+                       <p>• <strong>Disciplina Pré-Flop:</strong> Desista sem hesitar e aguarde um spot com melhor conectividade ou posição.</p>`;
+          }
+        }
+      } else {
+        // POSTFLOP VERDICT (FLOP, TURN OR RIVER)
+        const streetName = bCodes.length === 3 ? 'Flop' : (bCodes.length === 4 ? 'Turn' : 'River');
+        const bCards = bCodes.map(cardFromCode);
+        const hCards = hCodes.map(cardFromCode);
+        const evalHero = evaluateBestHand([...bCards, ...hCards]);
+        const info = analyzePostflopDrawsAndBoard(bCards, hCards, evalHero);
+
+        // Count direct outs that strictly improve Hero's category or top rank on next card
+        let directImproveCount = 0;
+        const sampleOuts = [];
+        if (bCards.length < 5) {
+          const used = getUsedAdvisorCodes();
+          const rem = makeFullDeck().filter(c => !used.has(c.code));
+          for (const c of rem) {
+            const nextEv = evaluateBestHand([...bCards, c, ...hCards]);
+            if (nextEv.category > evalHero.category && nextEv.category >= 2) {
+              directImproveCount++;
+              if (sampleOuts.length < 10) sampleOuts.push(VALUE_TO_CHAR[c.rank] + suitSymbol(c.suit));
+            }
+          }
+        }
+
+        document.getElementById('adv-street-summary').textContent = `${streetName} • ${nPlayers}-Max (${heroPos} ${heroInPos ? 'em Posição' : 'Fora de Posição'} vs ${vilPos}) • Bordo ${info.textureDesc}`;
+        document.getElementById('adv-metric-hand').textContent = evalHero.categoryName;
+        document.getElementById('adv-metric-outs').textContent = bCards.length === 5
+          ? 'River fechado (0 cartas por vir)'
+          : (info.drawLabel || (directImproveCount > 0 ? `${directImproveCount} cartas p/ 2 Pares+ (${sampleOuts.slice(0, 6).join(' ')})` : 'Sem draw direto forte'));
+
+        if (betFacing === 0) {
+          const valSize = Number((potBefore * (info.maxBoardSuit >= 2 || info.isConnected ? 0.68 : 0.35)).toFixed(1));
+          if (sim.equity >= 64) {
+            verdict = `🔥 APOSTAR POR VALOR (${valSize} bb)`;
+            verdictColor = 'text-emerald-400';
+            expHTML = `<p>• <strong>Vantagem Clara de Equidade:</strong> Sua mão (<strong>${evalHero.categoryName}</strong>) tem <strong>${sim.equity.toFixed(1)}%</strong> de equidade real contra os ${sim.validCombosCount} combos do range de ${vilPos} em bordo ${info.textureDesc}.</p>
+                       <p>• <strong>Tamanho sugerido:</strong> Aposte cerca de <strong>${valSize} bb</strong> (${info.maxBoardSuit >= 2 || info.isConnected ? '~68% do pote para cobrar caro de draws' : '~35% do pote para extrair de pares frágeis e cartas altas'}).</p>`;
+          } else if (bCards.length < 5 && info.totalDrawOuts >= 8 && sim.equity >= 35) {
+            const semiSize = Number((potBefore * 0.60).toFixed(1));
+            verdict = `⚡ APOSTAR EM SEMI-BLEFE (${semiSize} bb)`;
+            verdictColor = 'text-emerald-400';
+            expHTML = `<p>• <strong>Agressão com Equidade:</strong> Você tem <strong>${info.drawLabel}</strong> e <strong>${sim.equity.toFixed(1)}%</strong> de equidade contra o range de ${vilPos}. Apostar combina Fold Equity imediata com chance real de acertar mão forte nas próximas ruas.</p>`;
+          } else {
+            verdict = '🛡️ PEDIR MESA (CHECK — CONTROLE DE POTE)';
+            verdictColor = 'text-sky-400';
+            expHTML = `<p>• <strong>Realização Gratuita / Pot Control:</strong> Contra o range de ${vilPos}, sua mão (<strong>${evalHero.categoryName}</strong>) tem <strong>${sim.equity.toFixed(1)}%</strong> de equidade. Dar Check evita inflar o pote contra mãos superiores e permite realizar sua equidade sem risco.</p>`;
+          }
+        } else {
+          // Facing a postflop bet/raise
+          const raiseTo = Math.min(effStack, Number((betFacing * 2.8).toFixed(1)));
+          if (info.isMonster && sim.equity >= 74) {
+            verdict = spr <= 2.2 ? `🚀 IR ALL-IN POR VALOR (${effStack} bb)` : `🚀 AUMENTAR POR VALOR (${raiseTo} bb)`;
+            verdictColor = 'text-emerald-400';
+            expHTML = `<p>• <strong>Mão Monstro (${sim.equity.toFixed(1)}% de Equidade):</strong> Seu <strong>${evalHero.categoryName}</strong> domina amplamente o range de ${vilPos} em bordo ${info.textureDesc}. Aumente para construir o pote agora e cobrar de draws e top pairs!</p>`;
+          } else if (sim.equity >= reqEq + 3.5) {
+            verdict = `✅ PAGAR APOSTA (CALL ${callCost.toFixed(1)} bb)`;
+            verdictColor = 'text-sky-400';
+            expHTML = `<p>• <strong>Call Matematicamente Lucrativo (+EV):</strong> Você precisa de <strong>${reqEq.toFixed(1)}%</strong> de equidade para pagar ${callCost.toFixed(1)} bb, e sua mão (<strong>${evalHero.categoryName}${info.drawLabel ? ' + ' + info.drawLabel : ''}</strong>) entrega <strong>${sim.equity.toFixed(1)}%</strong> (margem de <strong>+${evMargin.toFixed(1)}%</strong> acima do break-even).</p>
+                       <p>• <strong>Plano:</strong> Pague para manter os blefes do ${vilPos} dentro do pote sem se isolar contra os nuts dele.</p>`;
+          } else if (bCards.length === 3 && info.totalDrawOuts >= 8 && spr >= 4 && sim.equity >= reqEq - 4) {
+            verdict = `✅ PAGAR PELAS IMPLIED ODDS (${callCost.toFixed(1)} bb)`;
+            verdictColor = 'text-amber-300';
+            expHTML = `<p>• <strong>Implied Odds Favoráveis (SPR ${spr.toFixed(1)}):</strong> Sua equidade direta (<strong>${sim.equity.toFixed(1)}%</strong> com ${info.drawLabel}) está muito próxima dos <strong>${reqEq.toFixed(1)}%</strong> pedidos, e os ${effStack} bb restantes permitem extrair mais fichas quando acertar o Turn.</p>`;
+          } else {
+            verdict = '🛑 DESISTIR (FOLD DISCIPLINADO)';
+            verdictColor = 'text-rose-400';
+            expHTML = `<p>• <strong>Call Negativo (-EV):</strong> A aposta de ${betFacing} bb exige pelo menos <strong>${reqEq.toFixed(1)}%</strong> de equidade, mas sua mão (<strong>${evalHero.categoryName}</strong>) tem apenas <strong>${sim.equity.toFixed(1)}%</strong> contra os ${sim.validCombosCount} combos de ${vilPos} (${evMargin.toFixed(1)}% abaixo do necessário).</p>
+                       <p>• <strong>Economia de Stack:</strong> Desista sem apego e preserve suas fichas para spots +EV.</p>`;
+          }
+        }
+      }
+
+      const badge = document.getElementById('adv-verdict-badge');
+      badge.textContent = verdict;
+      badge.className = `text-xl sm:text-2xl font-extrabold mt-0.5 ${verdictColor}`;
+      document.getElementById('adv-explanation').innerHTML = expHTML;
+    }
+
+    // =========================================================================
+    // 14C. PERSONALIZED AI COACH & LEAK ANALYZER
+    // =========================================================================
+    const LEAK_CATALOG = {
+      pf_ep_loose: {
+        title: 'Abrindo mãos fracas nas Posições Iniciais (UTG / LJ)',
+        icon: '⚠️',
+        why: 'Com 5 a 7 jogadores ainda por falar (especialmente no 8-Max), mãos offsuit médias (ATo, KJo, QTo) sofrem 3-bets frequentes e jogam fora de posição dominadas.',
+        fix: 'Corte ases offsuit abaixo de AJo (no 6-Max) ou AQo (no UTG 8-Max) e priorize mãos suited que conectam bem.',
+        actionLabel: 'Treinar Posições Iniciais com Foco na Borda',
+        runFix: function() {
+          state.preflop.borderFocus = true;
+          const spot = state.tableSize === 8 ? 'UTG_RFI' : 'LJ_RFI';
+          state.preflop.filter = spot;
+          document.getElementById('pf-filter-spot').value = spot;
+          switchTab('preflop');
+          dealPreflopHand();
+        }
+      },
+      pf_late_tight: {
+        title: 'Deixando de abrir mãos lucrativas no CO, BTN e SB',
+        icon: '📉',
+        why: 'Desistir demais no Button e Cutoff entrega os blinds sem luta e desperdiça a maior vantagem do poker: agir por último em todas as ruas pós-flop.',
+        fix: 'No BTN abra cerca de 43% das mãos: inclua todos os pares (22+), todos os ases suited (A2s+), reis suited e conectores suited.',
+        actionLabel: 'Treinar Roubo de Blinds no Button',
+        runFix: function() {
+          state.preflop.filter = 'BTN_RFI';
+          document.getElementById('pf-filter-spot').value = 'BTN_RFI';
+          switchTab('preflop');
+          dealPreflopHand();
+        }
+      },
+      pf_bb_overfold: {
+        title: 'Entregando o Big Blind fácil demais (Overfolding BB)',
+        icon: '🛡️',
+        why: 'No Big Blind você já investiu 1 bb e fecha a ação pré-flop. Desistir de mãos jogáveis contra roubos do BTN/CO faz sua taxa de perda nos blinds disparar.',
+        fix: 'Contra aumento de 2.5 bb do Button, você paga apenas 1.5 bb para um pote de 5.5 bb (27% de pot odds): defenda amplamente pares, suited e conectores.',
+        actionLabel: 'Treinar Defesa BB vs BTN',
+        runFix: function() {
+          state.preflop.filter = 'BB_vs_BTN';
+          document.getElementById('pf-filter-spot').value = 'BB_vs_BTN';
+          switchTab('preflop');
+          dealPreflopHand();
+        }
+      },
+      pf_bb_overcall: {
+        title: 'Pagando fora de posição com mãos dominadas',
+        icon: '🪤',
+        why: 'Fazer Call no Small Blind ou pagar opens iniciais (UTG/LJ) com offsuits fracos coloca você fora de posição com segundo melhor kicker.',
+        fix: 'No Small Blind jogue sempre 3-Bet ou Fold (sem Call), e contra UTG/LJ exija mãos suited ou pares para defender o BB.',
+        actionLabel: 'Treinar Defesa contra Posição Inicial',
+        runFix: function() {
+          const spot = state.tableSize === 8 ? 'BB_vs_UTG' : 'BB_vs_LJ';
+          state.preflop.filter = spot;
+          document.getElementById('pf-filter-spot').value = spot;
+          switchTab('preflop');
+          dealPreflopHand();
+        }
+      },
+      pf_passive_3bet: {
+        title: 'Passividade Pré-Flop (Falta de 3-Bet por Valor e Pressão)',
+        icon: '💤',
+        why: 'Apenas pagar com mãos fortes (QQ+, AK, AQs) ou ótimos bloqueadores (A5s) deixa múltiplos jogadores entrarem barato e reduz seu valor esperado.',
+        fix: 'Re-aumente (3-Bet) sem medo com seu topo de range e use A5s/A4s como 3-bets leves que bloqueiam AA do vilão.',
+        actionLabel: 'Treinar Spots de 3-Bet Pré-Flop',
+        runFix: function() {
+          state.preflop.filter = 'FACING_ALL';
+          document.getElementById('pf-filter-spot').value = 'FACING_ALL';
+          switchTab('preflop');
+          dealPreflopHand();
+        }
+      },
+      post_calling_station: {
+        title: 'Pagando Apostas Pós-Flop sem Pot Odds ("Calling Station")',
+        icon: '💸',
+        why: 'Pagar apostas altas de 75% a 100% do pote com pares frágeis ou gutshots sem equidade é o vazamento mais caro no pós-flop.',
+        fix: 'Antes de clicar em Call, calcule o preço: contra 75% do pote você precisa de 30% de equidade; contra pote cheio, 33,3%. Se não tiver, dê Fold disciplinado.',
+        actionLabel: 'Praticar Pós-Flop Infinito Ao Vivo',
+        runFix: function() {
+          switchTab('postflop');
+          setPostflopSource('infinite');
+        }
+      },
+      post_overfold: {
+        title: 'Desistindo Cedo Demais sob Pressão no Pós-Flop',
+        icon: '🏳️',
+        why: 'Largar Top Pair ou draws fortes (Flush Draw de 9 outs / OESD de 8 outs) contra apostas pequenas permite que oponentes agressivos lucrem blefando você.',
+        fix: 'Contra apostas de 33% a 50% do pote (que pedem apenas 20% a 25% de equidade), continue com todos os seus pares médios/altos e draws de 8+ outs.',
+        actionLabel: 'Treinar Defesa Pós-Flop',
+        runFix: function() {
+          switchTab('postflop');
+          setPostflopSource('infinite');
+        }
+      },
+      post_missed_value: {
+        title: 'Perdendo Ruas de Valor em Posição (Jogo Passivo)',
+        icon: '🧊',
+        why: 'Dar Check em posição quando você tem Top Pair bom kicker, Overpair ou trinca deixa de construir o pote e dá cartas grátis para draws do oponente.',
+        fix: 'Quando o vilão pedir mesa e sua equidade passar de ~65%, aposte cerca de 66% do pote para extrair valor.',
+        actionLabel: 'Treinar Extração de Valor Pós-Flop',
+        runFix: function() {
+          switchTab('postflop');
+          setPostflopSource('infinite');
+        }
+      },
+      math_odds_leak: {
+        title: 'Imprecisão em Pot Odds e Contagem de Outs',
+        icon: '🧮',
+        why: 'Confundir a probabilidade de 1 carta (Turn→River) com 2 cartas (Flop→River) transforma calls perdedores em armadilhas recorrentes.',
+        fix: 'Use a Regra do 4 apenas em all-in no Flop; no Turn com 1 carta por vir, multiplique seus outs apenas por 2 (Flush Draw = 9 × 2 ≈ 18–20%).',
+        actionLabel: 'Treinar Pot Odds & Contagem de Outs',
+        runFix: function() {
+          switchTab('math');
+          dealMathSpot();
+        }
+      },
+      rank_board_vision: {
+        title: 'Distração na Leitura de Bordo e Kickers no Showdown',
+        icon: '👁️',
+        why: 'Não reparar em 4 cartas para sequência/flush comunitárias ou em kickers dominados gera perdas evitáveis no river.',
+        fix: 'Sempre monte mentalmente as melhores 5 cartas de cada jogador antes de pagar no river.',
+        actionLabel: 'Treinar Leitura de Showdown',
+        runFix: function() {
+          switchTab('ranking');
+          setRankMode('winner');
+        }
+      }
+    };
+
+    function runLeakFix(leakKey) {
+      if (LEAK_CATALOG[leakKey] && LEAK_CATALOG[leakKey].runFix) {
+        LEAK_CATALOG[leakKey].runFix();
+      }
+    }
+
+    function renderCoachDashboard() {
+      const m = state.stats.byMode;
+      const totalPlayed = m.preflop.played + m.postflop.played + m.math.played + m.ranking.played;
+
+      // Combine logged leak tags + infer from any older items in mistakes queue
+      const combinedLeaks = Object.assign({}, state.stats.leaks || {});
+      if (Object.keys(combinedLeaks).length === 0 && state.stats.mistakes.length > 0) {
+        state.stats.mistakes.forEach(item => {
+          if (item.mode === 'preflop') combinedLeaks.pf_ep_loose = (combinedLeaks.pf_ep_loose || 0) + 1;
+          else if (item.mode === 'postflop') combinedLeaks.post_calling_station = (combinedLeaks.post_calling_station || 0) + 1;
+          else if (item.mode === 'math') combinedLeaks.math_odds_leak = (combinedLeaks.math_odds_leak || 0) + 1;
+        });
+      }
+
+      // Update meters
+      const pfAcc = m.preflop.played > 0 ? Math.round((m.preflop.correct / m.preflop.played) * 100) : null;
+      const postAcc = m.postflop.played > 0 ? Math.round((m.postflop.correct / m.postflop.played) * 100) : null;
+      const mathTotal = m.math.played + m.ranking.played;
+      const mathAcc = mathTotal > 0 ? Math.round(((m.math.correct + m.ranking.correct) / mathTotal) * 100) : null;
+
+      document.getElementById('coach-meter-pf-lbl').textContent = pfAcc !== null ? `${pfAcc}% (${m.preflop.played} mãos)` : 'Sem dados';
+      document.getElementById('coach-meter-pf-bar').style.width = (pfAcc || 0) + '%';
+      document.getElementById('coach-meter-post-lbl').textContent = postAcc !== null ? `${postAcc}% (${m.postflop.played} mãos)` : 'Sem dados';
+      document.getElementById('coach-meter-post-bar').style.width = (postAcc || 0) + '%';
+      document.getElementById('coach-meter-math-lbl').textContent = mathAcc !== null ? `${mathAcc}% (${mathTotal} mãos)` : 'Sem dados';
+      document.getElementById('coach-meter-math-bar').style.width = (mathAcc || 0) + '%';
+
+      // Style tendency diagnosis
+      const t = state.stats.tendencies || { loose: 0, tight: 0, passive: 0, aggressive: 0 };
+      const styleBadge = document.getElementById('coach-style-badge');
+      const sampleLbl = document.getElementById('coach-sample-count');
+      sampleLbl.textContent = `${totalPlayed} decisões analisadas`;
+
+      if (totalPlayed < 5) {
+        styleBadge.textContent = 'Calibrando Perfil...';
+        styleBadge.className = 'text-lg font-extrabold text-amber-300';
+      } else {
+        const maxT = Math.max(t.loose, t.tight, t.passive, t.aggressive);
+        if (maxT === 0) {
+          styleBadge.textContent = 'Sólido / GTO (TAG)';
+          styleBadge.className = 'text-lg font-extrabold text-emerald-400';
+        } else if (t.loose === maxT) {
+          styleBadge.textContent = 'Solto / Pagador (Loose)';
+          styleBadge.className = 'text-lg font-extrabold text-rose-400';
+        } else if (t.passive === maxT) {
+          styleBadge.textContent = 'Passivo (Falta Agressão)';
+          styleBadge.className = 'text-lg font-extrabold text-amber-400';
+        } else if (t.tight === maxT) {
+          styleBadge.textContent = 'Cauteloso Demais (Tight)';
+          styleBadge.className = 'text-lg font-extrabold text-sky-400';
+        } else {
+          styleBadge.textContent = 'Agressivo (Ajustar Sizes)';
+          styleBadge.className = 'text-lg font-extrabold text-emerald-400';
+        }
+      }
+
+      const sortedLeaks = Object.entries(combinedLeaks)
+        .filter(([k, count]) => count > 0 && LEAK_CATALOG[k])
+        .sort((a, b) => b[1] - a[1]);
+
+      const listEl = document.getElementById('coach-leaks-list');
+      if (sortedLeaks.length === 0) {
+        listEl.innerHTML = `
+          <div class="md:col-span-2 p-6 rounded-2xl bg-slate-900/90 border border-slate-800 text-center space-y-3">
+            <div class="text-3xl">🎯</div>
+            <div class="text-base font-bold text-white">Nenhum padrão de erro recorrente detectado ainda!</div>
+            <p class="text-xs sm:text-sm text-slate-400 max-w-xl mx-auto leading-relaxed">
+              Jogue algumas rodadas no Simulador Pré-Flop (experimente alternar entre 6-Max e 8-Max no topo!), no Pós-Flop Infinito e em Pot Odds. Assim que você errar qualquer situação, o treinador classificará o motivo exato aqui com recomendações práticas de ajuste.
+            </p>
+            <div class="pt-1 flex justify-center gap-2.5">
+              <button type="button" onclick="startDailyDrill()" class="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs sm:text-sm transition">
+                ⚡ Fazer Bateria de Diagnóstico (10 Mãos)
+              </button>
+            </div>
+          </div>
+        `;
+        return;
+      }
+
+      listEl.innerHTML = sortedLeaks.map(([key, count], rankIdx) => {
+        const meta = LEAK_CATALOG[key];
+        const priorityBadge = rankIdx === 0
+          ? '<span class="px-2 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/40 text-[10px] font-extrabold uppercase">Prioridade #1</span>'
+          : `<span class="px-2 py-0.5 rounded bg-slate-800 text-slate-300 text-[10px] font-bold">${count} ocorrência${count > 1 ? 's' : ''}</span>`;
+        return `
+          <div class="p-4 sm:p-5 rounded-2xl bg-slate-900/90 border ${rankIdx === 0 ? 'border-rose-500/45' : 'border-slate-800'} flex flex-col justify-between gap-4">
+            <div class="space-y-2.5">
+              <div class="flex items-center justify-between gap-2">
+                <span class="text-xs font-bold text-amber-400">${meta.icon} Leak Detectado (${count}x)</span>
+                ${priorityBadge}
+              </div>
+              <h4 class="text-sm sm:text-base font-extrabold text-white">${meta.title}</h4>
+              <p class="text-xs text-slate-300 leading-relaxed"><strong>Por que custa fichas:</strong> ${meta.why}</p>
+              <div class="p-3 rounded-xl bg-emerald-950/35 border border-emerald-500/25 text-xs text-emerald-200 leading-relaxed">
+                <strong>🔧 Ajuste Recomendado:</strong> ${meta.fix}
+              </div>
+            </div>
+            <button type="button" onclick="runLeakFix('${key}')" class="w-full py-2.5 px-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs sm:text-sm transition">
+              🎯 ${meta.actionLabel} →
+            </button>
+          </div>
+        `;
+      }).join('');
+    }
+
+
+    // =========================================================================
+    // 14D. VISUAL TABLE POSITIONS & GLOBAL BB STACK CONTROLLER
+    // =========================================================================
+    const POSITION_DETAILS = {
+      'UTG': {
+        fullName: 'UTG — Under the Gun (8-Max)',
+        cat: 'Posição Inicial • Alerta Máximo',
+        dotClass: 'bg-rose-500',
+        ringClass: 'border-rose-400 bg-rose-950/90',
+        role: 'Primeiro jogador a falar no pré-flop numa mesa de 8 pessoas, com 7 oponentes ainda por agir. Como quase sempre jogará fora de posição pós-flop e enfrenta o maior risco de 3-bet, exige o range mais seletivo da mesa.'
+      },
+      'UTG+1': {
+        fullName: 'UTG+1 — Early Position 2 (8-Max)',
+        cat: 'Posição Inicial • Seletiva',
+        dotClass: 'bg-rose-500',
+        ringClass: 'border-rose-400 bg-rose-950/90',
+        role: 'Segunda posição a agir no 8-Max (6 jogadores restantes). Permite adicionar alguns ases suited baixos e broadways a mais que o UTG, mantendo disciplina rigorosa.'
+      },
+      'LJ': {
+        fullName: 'LJ — Lojack (UTG no 6-Max)',
+        cat: 'Posição Inicial / Média',
+        dotClass: 'bg-amber-400',
+        ringClass: 'border-amber-400 bg-amber-950/90',
+        role: 'No 6-Max é o primeiro assento a falar (5 oponentes atrás); no 8-Max é o 3º a agir. É a âncora da sua estratégia de abertura: todos os pares e ases suited já se tornam lucrativos em 100 bb.'
+      },
+      'HJ': {
+        fullName: 'HJ — Hijack',
+        cat: 'Posição Média • Transição',
+        dotClass: 'bg-amber-400',
+        ringClass: 'border-amber-400 bg-amber-950/90',
+        role: 'Restam apenas Cutoff, Button e os dois Blinds. Você já começa a pressionar os blinds com conectores suited médios e reis suited mais amplos.'
+      },
+      'CO': {
+        fullName: 'CO — Cutoff',
+        cat: 'Posição Final • Ataque',
+        dotClass: 'bg-emerald-400',
+        ringClass: 'border-emerald-400 bg-emerald-950/90',
+        role: 'Segundo assento mais lucrativo do poker! Só o Button pode tirar sua posição pós-flop. Se o BTN desistir, você jogará em posição contra os dois blinds em todas as ruas.'
+      },
+      'BTN': {
+        fullName: 'BTN — Button (Dealer)',
+        cat: 'Posição Final • Melhor Assento da Mesa',
+        dotClass: 'bg-emerald-400',
+        ringClass: 'border-emerald-400 bg-emerald-950/90',
+        role: 'O assento mais lucrativo do Texas Hold'em: no pré-flop restam apenas os dois blinds, e no Flop, Turn e River você SEMPRE age por último, vendo o que todos fazem antes de decidir.'
+      },
+      'SB': {
+        fullName: 'SB — Small Blind (0.5 bb)',
+        cat: 'Blinds • Pior Posição Pós-Flop',
+        dotClass: 'bg-sky-400',
+        ringClass: 'border-sky-400 bg-sky-950/90',
+        role: 'Paga meia aposta obrigatória (0.5 bb). No pré-flop quando roda em fold você só precisa vencer o BB, mas no pós-flop será o PRIMEIRO a falar em todas as ruas (fora de posição).'
+      },
+      'BB': {
+        fullName: 'BB — Big Blind (1.0 bb)',
+        cat: 'Blinds • Fecha a Ação Pré-Flop',
+        dotClass: 'bg-sky-400',
+        ringClass: 'border-sky-400 bg-sky-950/90',
+        role: 'Paga 1.0 bb obrigatório. Tem a grande vantagem de falar por último no Pré-Flop com desconto no preço (Pot Odds), defendendo muito mais mãos contra aberturas tardias, apesar de agir antes dos jogadores de fora dos blinds no Pós-Flop.'
+      }
+    };
+
+    function setGlobalStackBb(val) {
+      const num = Math.max(5, Math.min(250, Math.round(Number(val) || 100)));
+      state.stackBb = num;
+      const advStackInput = document.getElementById('adv-stack');
+      if (advStackInput) advStackInput.value = String(num);
+
+      saveState();
+      updateHeaderAndDashboard();
+      dealPreflopHand();
+      if (state.activeTab === 'tablemap') renderTableMap();
+      if (state.activeTab === 'ranges') renderRangeViewer();
+      if (state.activeTab === 'advisor') runSpotAdvisor();
+    }
+
+    function setTableMapPlayers(n) {
+      if (state.tableSize !== n) {
+        toggleTableSize();
+      }
+      const valid = getActivePositions(n);
+      if (!valid.includes(state.tableMap.selectedPos)) {
+        state.tableMap.selectedPos = 'BTN';
+      }
+      renderTableMap();
+    }
+
+    function setTableMapOrderMode(mode) {
+      state.tableMap.orderMode = mode;
+      renderTableMap();
+    }
+
+    function rotateTableMapDealer() {
+      const n = state.tableSize;
+      state.tableMap.dealerOffset = (state.tableMap.dealerOffset + 1) % n;
+      playTone('click');
+      renderTableMap();
+    }
+
+    function selectTableMapSeat(pos) {
+      state.tableMap.selectedPos = pos;
+      playTone('click');
+      renderTableMap();
+    }
+
+    function getRfiScenarioKeyForPos(pos) {
+      const map = {
+        'UTG': 'UTG_RFI',
+        'UTG+1': 'UTG1_RFI',
+        'LJ': 'LJ_RFI',
+        'HJ': 'HJ_RFI',
+        'CO': 'CO_RFI',
+        'BTN': 'BTN_RFI',
+        'SB': 'SB_RFI',
+        'BB': 'BB_vs_BTN'
+      };
+      return map[pos] || 'BTN_RFI';
+    }
+
+    function renderTableMap() {
+      const n = state.tableSize;
+      const bb = state.stackBb;
+      const preOrder = getActivePositions(n); // ['LJ','HJ','CO','BTN','SB','BB'] or 8-Max
+      // Postflop clockwise order starts at SB, BB, UTG..., BTN
+      const postOrder = ['SB', 'BB', ...preOrder.filter(p => p !== 'SB' && p !== 'BB')];
+
+      if (!preOrder.includes(state.tableMap.selectedPos)) {
+        state.tableMap.selectedPos = 'BTN';
+      }
+
+      document.getElementById('btn-tm-6max').className = 'px-3 py-1.5 rounded-xl text-xs font-bold border transition ' +
+        (n === 6 ? 'bg-emerald-500 text-slate-950 border-emerald-400' : 'bg-slate-950 text-slate-300 border-slate-700');
+      document.getElementById('btn-tm-8max').className = 'px-3 py-1.5 rounded-xl text-xs font-bold border transition ' +
+        (n === 8 ? 'bg-emerald-500 text-slate-950 border-emerald-400' : 'bg-slate-950 text-slate-300 border-slate-700');
+
+      const isPre = state.tableMap.orderMode === 'preflop';
+      document.getElementById('btn-tm-order-pre').className = 'py-2 px-3 rounded-xl text-xs font-bold border transition ' +
+        (isPre ? 'bg-emerald-500 text-slate-950 border-emerald-400' : 'bg-slate-900 text-slate-300 border-slate-700');
+      document.getElementById('btn-tm-order-post').className = 'py-2 px-3 rounded-xl text-xs font-bold border transition ' +
+        (!isPre ? 'bg-emerald-500 text-slate-950 border-emerald-400' : 'bg-slate-900 text-slate-300 border-slate-700');
+
+      document.getElementById('tm-stack-readout').textContent = `${bb} bb`;
+      document.getElementById('tm-stack-slider').value = String(bb);
+
+      let zoneText = 'Cash Padrão (100 bb)';
+      if (bb <= 16) zoneText = 'Zona Push ou Fold (All-in)';
+      else if (bb <= 35) zoneText = 'Torneio Stack Curto (Min-Raise / 3B Jam)';
+      else if (bb < 80) zoneText = 'Stack Médio (SPR Reduzido)';
+      else if (bb >= 140) zoneText = 'Deep Stack (Implied Odds Altas)';
+      document.getElementById('tm-stack-zone-badge').textContent = zoneText;
+
+      document.getElementById('tm-center-title').textContent = `Mesa ${n}-Max • Stacks de ${bb} bb`;
+      document.getElementById('tm-center-order-hint').textContent = isPre
+        ? `Pré-Flop: ${preOrder[0]} fala 1º • BB fala por último`
+        : 'Pós-Flop: SB fala 1º • BTN fala sempre por último';
+
+      // Clockwise seating order starting from BTN -> SB -> BB -> UTG... -> CO
+      const clockwisePositions = ['BTN', 'SB', 'BB', ...preOrder.filter(p => p !== 'BTN' && p !== 'SB' && p !== 'BB')];
+      const seatsHTML = clockwisePositions.map((pos, idx) => {
+        // Arrange seats clockwise around oval starting bottom-right for BTN + dealerOffset
+        const seatSlot = (idx + state.tableMap.dealerOffset) % n;
+        const angleDeg = 55 + (seatSlot * (360 / n));
+        const rad = (angleDeg * Math.PI) / 180;
+        const cx = 50 + 41 * Math.cos(rad);
+        const cy = 50 + 40 * Math.sin(rad);
+
+        const scKey = getRfiScenarioKeyForPos(pos);
+        const effSc = getEffectiveScenario(PREFLOP_SCENARIOS[scKey], bb);
+        let playCombos = 0;
+        effSc.raise.forEach(h => { playCombos += getComboCount(h); });
+        effSc.call.forEach(h => { playCombos += getComboCount(h); });
+        const pctStr = ((playCombos / 1326) * 100).toFixed(0) + '%';
+
+        const ordNum = (isPre ? preOrder.indexOf(pos) : postOrder.indexOf(pos)) + 1;
+        const meta = POSITION_DETAILS[pos];
+        const isSelected = state.tableMap.selectedPos === pos;
+        const selClasses = isSelected
+          ? `${meta.ringClass} ring-2 ring-white scale-105 z-20 shadow-xl`
+          : 'bg-slate-950/95 border-slate-700 hover:border-slate-400 z-10 opacity-95 hover:opacity-100';
+
+        const chipTag = pos === 'BTN'
+          ? '<span class="ml-1 px-1.5 py-0.2 rounded-full bg-amber-400 text-slate-950 text-[10px] font-extrabold">D</span>'
+          : (pos === 'SB' ? '<span class="ml-1 text-[10px] text-sky-300 font-bold">0.5</span>' : (pos === 'BB' ? '<span class="ml-1 text-[10px] text-sky-300 font-bold">1bb</span>' : ''));
+
+        return `
+          <button type="button" onclick="selectTableMapSeat('${pos}')" style="left:${cx.toFixed(1)}%; top:${cy.toFixed(1)}%; transform:translate(-50%,-50%);" class="absolute w-24 sm:w-28 rounded-2xl border px-2 py-1.5 text-center transition ${selClasses}">
+            <div class="flex items-center justify-center text-xs font-extrabold text-white">
+              <span class="w-2 h-2 rounded-full ${meta.dotClass} mr-1"></span>
+              <span>${pos}</span>${chipTag}
+            </div>
+            <div class="text-[10px] text-slate-300 font-semibold mt-0.5">${ordNum}º ${isPre ? 'Pré' : 'Pós'} • ${pctStr}</div>
+            <div class="text-[10px] text-amber-300 font-bold">${bb} bb</div>
+          </button>
+        `;
+      }).join('');
+      document.getElementById('tm-seats-layer').innerHTML = seatsHTML;
+
+      // Populate Inspector Card for selectedPos
+      const selPos = state.tableMap.selectedPos;
+      const detail = POSITION_DETAILS[selPos];
+      const scKey = getRfiScenarioKeyForPos(selPos);
+      const effSc = getEffectiveScenario(PREFLOP_SCENARIOS[scKey], bb);
+      let combos = 0;
+      effSc.raise.forEach(h => { combos += getComboCount(h); });
+      effSc.call.forEach(h => { combos += getComboCount(h); });
+      const pctExact = ((combos / 1326) * 100).toFixed(1) + '%';
+
+      const preIdx = preOrder.indexOf(selPos) + 1;
+      const postIdx = postOrder.indexOf(selPos) + 1;
+
+      document.getElementById('tm-seat-cat-badge').textContent = detail.cat;
+      document.getElementById('tm-seat-title').textContent = detail.fullName;
+      document.getElementById('tm-seat-open-pct').textContent = `${ selPos === 'BB' ? 'Defesa ' : 'Joga ' }${pctExact}`;
+      document.getElementById('tm-seat-pre-order').textContent = `${preIdx}º de ${n} jogadores${selPos === 'BB' ? ' (Fecha a ação)' : ''}`;
+      document.getElementById('tm-seat-post-order').textContent = `${postIdx}º a falar${selPos === 'BTN' ? ' (Sempre por último!)' : (selPos === 'SB' ? ' (Sempre 1º — OOP)' : '')}`;
+      document.getElementById('tm-seat-role-desc').textContent = detail.role;
+      document.getElementById('tm-seat-stack-lbl').textContent = `${bb} bb`;
+      document.getElementById('tm-seat-stack-advice').textContent = `${effSc.desc} Ação base recomendada: ${selPos === 'BB' ? 'Defender Call / ' + effSc.raiseLabel : effSc.raiseLabel} (${combos} combos).`;
+    }
+
+    function jumpFromTableMapToRange() {
+      const scKey = getRfiScenarioKeyForPos(state.tableMap.selectedPos);
+      state.ranges.selectedScenarioId = scKey;
+      switchTab('ranges');
+    }
+
+    function jumpFromTableMapToDrill() {
+      const scKey = getRfiScenarioKeyForPos(state.tableMap.selectedPos);
+      state.preflop.filter = scKey;
+      const sel = document.getElementById('pf-filter-spot');
+      if (sel) sel.value = scKey;
+      switchTab('preflop');
+      dealPreflopHand();
+    }
+
     // =========================================================================
     // 15. GLOBAL SETTINGS, MODALS & KEYBOARD SHORTCUTS
     // =========================================================================
@@ -2859,7 +4544,25 @@
         else renderRankingNameUI(state.ranking.answered);
       }
       if (state.activeTab === 'tools') renderCalcUI(true);
+      if (state.activeTab === 'advisor') renderAdvisorUI(true);
       showToast(state.fourColorDeck ? 'Baralho de 4 cores ativado (♠ ♥ ♦azul ♣verde)' : 'Baralho clássico de 2 cores ativado');
+    }
+
+    function toggleTableSize() {
+      state.tableSize = state.tableSize === 6 ? 8 : 6;
+      state.advisor.tableSize = state.tableSize;
+      if (state.tableSize === 6 && PREFLOP_SCENARIOS[state.preflop.filter] && PREFLOP_SCENARIOS[state.preflop.filter].minPlayers === 8) {
+        state.preflop.filter = 'ALL';
+        document.getElementById('pf-filter-spot').value = 'ALL';
+      }
+      saveState();
+      updateHeaderAndDashboard();
+      dealPreflopHand();
+      dealPostflopHand();
+      if (state.activeTab === 'tablemap') renderTableMap();
+      if (state.activeTab === 'ranges') renderRangeViewer();
+      if (state.activeTab === 'advisor') renderAdvisorUI();
+      showToast(`Mesa alterada para ${state.tableSize} jogadores (${state.tableSize}-Max)!`);
     }
 
     function toggleSound() {
@@ -2867,6 +4570,206 @@
       saveState();
       updateHeaderAndDashboard();
       showToast(state.soundEnabled ? 'Sons ativados' : 'Sons silenciados');
+    }
+
+
+    // =========================================================================
+    // 15B. CROSS-DEVICE BACKUP & SYNC CODE (UTF-8 SAFE BASE64)
+    // =========================================================================
+    function utf8ToBase64(str) {
+      const bytes = new TextEncoder().encode(str);
+      let binary = '';
+      for (let i = 0; i < bytes.length; i++) {
+        binary += String.fromCharCode(bytes[i]);
+      }
+      return btoa(binary);
+    }
+
+    function base64ToUtf8(b64) {
+      const binary = atob(b64);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) {
+        bytes[i] = binary.charCodeAt(i);
+      }
+      return new TextDecoder().decode(bytes);
+    }
+
+    function generateSyncCode() {
+      const payload = {
+        v: 1,
+        ts: Date.now(),
+        tableSize: state.tableSize,
+        fourColorDeck: state.fourColorDeck,
+        soundEnabled: state.soundEnabled,
+        stats: state.stats
+      };
+      return 'PTBR1:' + utf8ToBase64(JSON.stringify(payload));
+    }
+
+    function parseSyncCode(rawInput) {
+      const cleaned = (rawInput || '').trim();
+      if (!cleaned) throw new Error('Cole um código antes de importar.');
+      const rawB64 = cleaned.startsWith('PTBR1:') ? cleaned.slice(6).trim() : cleaned;
+      let parsed;
+      try {
+        parsed = JSON.parse(base64ToUtf8(rawB64));
+      } catch (e) {
+        throw new Error('Código inválido ou incompleto. Copie o código inteiro começando com PTBR1:');
+      }
+      if (!parsed || !parsed.stats || !parsed.stats.byMode) {
+        throw new Error('Estrutura de backup não reconhecida.');
+      }
+      return parsed;
+    }
+
+    function openSyncModal() {
+      const code = generateSyncCode();
+      const exportArea = document.getElementById('sync-export-text');
+      exportArea.value = code;
+      const m = state.stats.byMode;
+      const totalHands = m.preflop.played + m.postflop.played + m.math.played + m.ranking.played;
+      document.getElementById('sync-export-meta').textContent = `${totalHands} mãos • ${state.stats.xp} XP • ${state.stats.mistakes.length} na revisão`;
+      document.getElementById('sync-status-msg').classList.add('hidden');
+      document.getElementById('modal-sync').classList.remove('hidden');
+    }
+
+    function closeSyncModal() {
+      document.getElementById('modal-sync').classList.add('hidden');
+    }
+
+    function setSyncStatus(msg, isError) {
+      const box = document.getElementById('sync-status-msg');
+      box.textContent = msg;
+      box.className = 'text-xs font-semibold px-3 py-2 rounded-lg ' +
+        (isError ? 'bg-rose-950/70 border border-rose-500/40 text-rose-200' : 'bg-emerald-950/70 border border-emerald-500/40 text-emerald-200');
+      box.classList.remove('hidden');
+    }
+
+    function copySyncCode() {
+      const exportArea = document.getElementById('sync-export-text');
+      const code = exportArea.value;
+      const onCopied = () => {
+        playTone('correct');
+        showToast('Código de backup copiado!');
+        setSyncStatus('✅ Código copiado! Envie para seu outro aparelho e cole no campo abaixo lá.', false);
+      };
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(code).then(onCopied).catch(() => {
+            exportArea.focus();
+            exportArea.select();
+            document.execCommand('copy');
+            onCopied();
+          });
+          return;
+        }
+      } catch (e) {
+        // Fallback below
+      }
+      try {
+        exportArea.focus();
+        exportArea.select();
+        document.execCommand('copy');
+        onCopied();
+      } catch (e) {
+        setSyncStatus('Selecione o texto na caixa acima e copie manualmente (Ctrl+C).', true);
+      }
+    }
+
+    function downloadSyncFile() {
+      const code = generateSyncCode();
+      const blob = new Blob([code], { type: 'text/plain;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `poker_trainer_backup_${todayKey()}.txt`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      showToast('Arquivo de backup baixado!');
+    }
+
+    function applySyncCode(strategy) {
+      const inputVal = document.getElementById('sync-import-text').value;
+      let incoming;
+      try {
+        incoming = parseSyncCode(inputVal);
+      } catch (err) {
+        playTone('wrong');
+        setSyncStatus('❌ ' + err.message, true);
+        return;
+      }
+
+      const incStats = incoming.stats;
+      if (strategy === 'replace') {
+        if (incoming.tableSize === 6 || incoming.tableSize === 8) {
+          state.tableSize = incoming.tableSize;
+          state.advisor.tableSize = incoming.tableSize;
+        }
+        if (typeof incoming.fourColorDeck === 'boolean') state.fourColorDeck = incoming.fourColorDeck;
+        state.stats = {
+          streak: Number(incStats.streak) || 0,
+          bestStreak: Number(incStats.bestStreak) || 0,
+          xp: Number(incStats.xp) || 0,
+          dailyDate: incStats.dailyDate === todayKey() ? todayKey() : todayKey(),
+          dailyDone: incStats.dailyDate === todayKey() ? (Number(incStats.dailyDone) || 0) : state.stats.dailyDone,
+          byMode: {
+            preflop: { played: Number(incStats.byMode?.preflop?.played) || 0, correct: Number(incStats.byMode?.preflop?.correct) || 0 },
+            postflop: { played: Number(incStats.byMode?.postflop?.played) || 0, correct: Number(incStats.byMode?.postflop?.correct) || 0 },
+            math: { played: Number(incStats.byMode?.math?.played) || 0, correct: Number(incStats.byMode?.math?.correct) || 0 },
+            ranking: { played: Number(incStats.byMode?.ranking?.played) || 0, correct: Number(incStats.byMode?.ranking?.correct) || 0 }
+          },
+          leaks: Object.assign({}, incStats.leaks || {}),
+          tendencies: Object.assign({ loose: 0, tight: 0, passive: 0, aggressive: 0 }, incStats.tendencies || {}),
+          mistakes: Array.isArray(incStats.mistakes) ? incStats.mistakes.slice(0, 40) : []
+        };
+      } else {
+        // Merge strategy: sum hands, XP, leaks, tendencies, keep max bestStreak & deduplicate mistakes
+        for (const k of ['preflop', 'postflop', 'math', 'ranking']) {
+          state.stats.byMode[k].played += Number(incStats.byMode?.[k]?.played) || 0;
+          state.stats.byMode[k].correct += Number(incStats.byMode?.[k]?.correct) || 0;
+        }
+        state.stats.xp += Number(incStats.xp) || 0;
+        state.stats.bestStreak = Math.max(state.stats.bestStreak, Number(incStats.bestStreak) || 0);
+        if (incStats.dailyDate === todayKey()) {
+          state.stats.dailyDone = Math.max(state.stats.dailyDone, Number(incStats.dailyDone) || 0);
+        }
+        const incLeaks = incStats.leaks || {};
+        for (const lk of Object.keys(incLeaks)) {
+          state.stats.leaks[lk] = (state.stats.leaks[lk] || 0) + (Number(incLeaks[lk]) || 0);
+        }
+        const incTend = incStats.tendencies || {};
+        for (const tk of ['loose', 'tight', 'passive', 'aggressive']) {
+          state.stats.tendencies[tk] = (state.stats.tendencies[tk] || 0) + (Number(incTend[tk]) || 0);
+        }
+        if (Array.isArray(incStats.mistakes)) {
+          for (const item of incStats.mistakes) {
+            if (item && item.sig && !state.stats.mistakes.some(m => m.sig === item.sig)) {
+              state.stats.mistakes.push(item);
+            }
+          }
+          if (state.stats.mistakes.length > 40) {
+            state.stats.mistakes = state.stats.mistakes.slice(-40);
+          }
+        }
+      }
+
+      saveState();
+      updateHeaderAndDashboard();
+      if (state.activeTab === 'coach') renderCoachDashboard();
+      if (state.activeTab === 'ranges') renderRangeViewer();
+      if (state.activeTab === 'advisor') renderAdvisorUI();
+
+      // Refresh export box with the newly updated state
+      document.getElementById('sync-export-text').value = generateSyncCode();
+      document.getElementById('sync-import-text').value = '';
+      playTone('correct');
+      const msg = strategy === 'merge'
+        ? '✅ Progresso e leaks mesclados com sucesso!'
+        : '✅ Histórico restaurado com sucesso neste dispositivo!';
+      setSyncStatus(msg, false);
+      showToast(msg);
     }
 
     function openResetModal() {
@@ -2890,6 +4793,8 @@
           math: { played: 0, correct: 0 },
           ranking: { played: 0, correct: 0 }
         },
+        leaks: {},
+        tendencies: { loose: 0, tight: 0, passive: 0, aggressive: 0 },
         mistakes: []
       };
       saveState();
@@ -2933,7 +4838,19 @@
       dealPostflopHand();
       dealMathSpot();
       dealRankingSpot();
+      const navEl = document.getElementById('top-mode-nav');
+      if (navEl && navEl.addEventListener) {
+        navEl.addEventListener('wheel', (ev) => {
+          if (Math.abs(ev.deltaY) > Math.abs(ev.deltaX)) {
+            navEl.scrollLeft += ev.deltaY;
+            ev.preventDefault();
+          }
+        }, { passive: false });
+      }
+      renderTableMap();
       renderRangeViewer();
+      renderAdvisorUI();
+      renderCoachDashboard();
       renderGlossary();
       switchTab('home');
     });
