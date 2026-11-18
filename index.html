@@ -2,14 +2,14 @@
 <html lang="pt-BR" class="dark">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Poker Trainer Brasil — Simulador GTO, Pot Odds, Ranges e Showdown</title>
   <script src="https://cdn.tailwindcss.com/3.4.17"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <script>
-    tailwind.config = {
+    if (window.tailwind) window.tailwind.config = {
       darkMode: 'class',
       theme: {
         extend: {
@@ -102,6 +102,72 @@
     .mode-scrollbar::-webkit-scrollbar-thumb:hover {
       background: #34d399;
     }
+    #top-mode-nav {
+      min-width: 0;
+      overscroll-behavior-x: contain;
+    }
+    #top-mode-nav > button { flex: none; }
+    main > section.hidden, [id^="modal-"].hidden { display: none; }
+    .deck-suit {
+      display: grid;
+      grid-template-columns: repeat(13, minmax(0, 1fr));
+      gap: 0.25rem;
+    }
+    @media (min-width: 640px) and (max-width: 900px) {
+      .app-header .header-content {
+        flex-wrap: wrap;
+        height: auto;
+        padding-block: 0.5rem;
+      }
+    }
+    @media (max-width: 639px) {
+      body {
+        padding-inline: env(safe-area-inset-left) env(safe-area-inset-right);
+        padding-bottom: env(safe-area-inset-bottom);
+      }
+      header.app-header {
+        position: static;
+        padding-top: env(safe-area-inset-top);
+      }
+      .app-header .header-content {
+        height: auto;
+        flex-wrap: wrap;
+        padding-block: 0.5rem;
+      }
+      .header-content .quick-controls {
+        width: 100%;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        gap: 0.25rem;
+      }
+      .quick-controls > button, #hdr-stack-select, #top-mode-nav button,
+      #btn-nav-left, #btn-nav-right, main button:not(.range-cell),
+      main select { min-height: 44px; }
+      #btn-nav-left, #btn-nav-right, #btn-sync, #btn-sound { min-width: 44px; }
+      main select { max-width: 100%; }
+      main .grid > *, main .flex-wrap > div { min-width: 0; }
+      #pf-controls { gap: 0.375rem; }
+      #pf-controls > button { padding-inline: 0.375rem; }
+      #pf-controls .key-hint { display: none; }
+      #post-board-cards, #math-board-cards, #rank-board-cards {
+        flex-wrap: nowrap;
+        gap: 0.25rem;
+      }
+      :is(#post-board-cards, #math-board-cards, #rank-board-cards) .playing-card {
+        min-width: 0;
+        flex: 0 1 3.25rem;
+        padding-inline: 0.25rem;
+      }
+      .deck-suit {
+        grid-template-columns: repeat(auto-fit, minmax(2.65rem, 1fr));
+        padding-block: 0.25rem;
+      }
+      [id^="modal-"].fixed > div {
+        max-height: 88vh;
+        max-height: 88dvh;
+        overflow-y: auto;
+      }
+    }
   </style>
   <meta name="theme-color" content="#090d16">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -114,8 +180,8 @@
 <body class="min-h-screen flex flex-col selection:bg-emerald-500/30 selection:text-emerald-200">
 
   <!-- Top Header -->
-  <header class="sticky top-0 z-30 bg-slate-950/90 backdrop-blur-md border-b border-slate-800/80">
-    <div class="max-w-6xl mx-auto px-3 sm:px-6 h-14 flex items-center justify-between gap-2">
+  <header class="app-header sticky top-0 z-30 bg-slate-950/90 backdrop-blur-md border-b border-slate-800/80">
+    <div class="header-content max-w-6xl mx-auto px-3 sm:px-6 h-14 flex items-center justify-between gap-2">
       <div class="flex items-center gap-2.5 min-w-0">
         <button type="button" onclick="switchTab('home')" class="flex items-center gap-2.5 text-left group focus:outline-none">
           <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-700 flex items-center justify-center shadow-lg shadow-emerald-950/60 shrink-0">
@@ -132,7 +198,7 @@
       </div>
 
       <!-- Quick Status & Controls -->
-      <div class="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
+      <div class="quick-controls flex items-center gap-1.5 sm:gap-2.5 shrink-0">
         <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-800 text-xs font-semibold" title="Sequência atual de acertos">
           <span class="text-amber-400">🔥</span>
           <span id="hdr-streak">0</span>
@@ -174,7 +240,7 @@
       <button type="button" id="btn-nav-left" onclick="scrollModeNav(-240)" class="shrink-0 w-7 h-8 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white text-xs font-extrabold flex items-center justify-center transition" title="Rolar modos para a esquerda">
         ◀
       </button>
-      <nav id="top-mode-nav" class="flex-1 flex items-center gap-1 overflow-x-auto mode-scrollbar py-1 px-1 scroll-smooth">
+      <nav id="top-mode-nav" aria-label="Modos de treino" class="flex-1 flex items-center gap-1 overflow-x-auto mode-scrollbar py-1 px-1">
       <button type="button" data-nav="home" onclick="switchTab('home')" class="nav-tab px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold whitespace-nowrap transition">
         🏠 Início
       </button>
@@ -487,15 +553,15 @@
       <div id="pf-controls" class="grid grid-cols-3 gap-3 max-w-xl mx-auto">
         <button type="button" id="btn-pf-fold" onclick="submitPreflopAction('FOLD')" class="py-3.5 px-4 rounded-xl bg-slate-800 hover:bg-rose-950/80 hover:border-rose-500/50 border border-slate-700 font-bold text-sm sm:text-base text-white transition shadow-lg">
           Desistir (Fold)
-          <span class="block text-[10px] font-normal text-slate-400 mt-0.5">Tecla 1 ou F</span>
+          <span class="key-hint block text-[10px] font-normal text-slate-400 mt-0.5">Tecla 1 ou F</span>
         </button>
         <button type="button" id="btn-pf-call" onclick="submitPreflopAction('CALL')" class="py-3.5 px-4 rounded-xl bg-sky-600 hover:bg-sky-500 border border-sky-400/30 font-bold text-sm sm:text-base text-white transition shadow-lg">
           <span id="lbl-pf-call">Pagar (Call)</span>
-          <span class="block text-[10px] font-normal text-sky-100/80 mt-0.5">Tecla 2 ou C</span>
+          <span class="key-hint block text-[10px] font-normal text-sky-100/80 mt-0.5">Tecla 2 ou C</span>
         </button>
         <button type="button" id="btn-pf-raise" onclick="submitPreflopAction('RAISE')" class="py-3.5 px-4 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold text-sm sm:text-base transition shadow-lg">
           <span id="lbl-pf-raise">Aumentar 2.5 bb</span>
-          <span class="block text-[10px] font-semibold text-slate-900/80 mt-0.5">Tecla 3 ou R</span>
+          <span class="key-hint block text-[10px] font-semibold text-slate-900/80 mt-0.5">Tecla 3 ou R</span>
         </button>
       </div>
 
@@ -2203,12 +2269,17 @@
       document.querySelectorAll('.nav-tab').forEach(btn => {
         const active = btn.getAttribute('data-nav') === tabId;
         if (active) activeBtnEl = btn;
+        if (active) btn.setAttribute('aria-current', 'page');
+        else btn.removeAttribute('aria-current');
         btn.className = 'nav-tab px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold whitespace-nowrap transition ' +
           (active ? 'bg-emerald-500 text-slate-950 shadow' : 'text-slate-300 hover:bg-slate-800/80 hover:text-white');
       });
-      if (activeBtnEl && activeBtnEl.scrollIntoView) {
-        try { activeBtnEl.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' }); } catch (e) {}
+      if (activeBtnEl) {
+        const nav = activeBtnEl.parentElement;
+        const offset = activeBtnEl.getBoundingClientRect().left - nav.getBoundingClientRect().left;
+        nav.scrollBy({ left: offset + (activeBtnEl.offsetWidth - nav.clientWidth) / 2 });
       }
+      window.scrollTo(0, 0);
       if (tabId === 'tablemap') renderTableMap();
       if (tabId === 'ranges') renderRangeViewer();
       if (tabId === 'advisor') renderAdvisorUI();
@@ -3465,7 +3536,7 @@
           const col = suitColorClass(s.id);
           return `<button type="button" ${isUsed ? 'disabled' : ''} onclick="pickCalcCard('${code}')" class="py-1.5 px-1 rounded border text-xs font-bold transition ${isUsed ? 'bg-slate-900 border-slate-800 text-slate-700 cursor-not-allowed' : 'bg-white hover:scale-105 border-slate-300 ' + col}">${r === 'T' ? '10' : r}${s.symbol}</button>`;
         }).join('');
-        return `<div class="grid grid-cols-13 gap-1" style="display:grid;grid-template-columns:repeat(13,minmax(0,1fr));">${btns}</div>`;
+        return `<div class="deck-suit">${btns}</div>`;
       }).join('');
       document.getElementById('calc-deck-grid').innerHTML = deckRows;
 
@@ -3796,7 +3867,7 @@
           const col = suitColorClass(s.id);
           return `<button type="button" ${isUsed ? 'disabled' : ''} onclick="pickAdvisorCard('${code}')" class="py-1.5 px-1 rounded border text-xs font-bold transition ${isUsed ? 'bg-slate-900 border-slate-800 text-slate-700 cursor-not-allowed' : 'bg-white hover:scale-105 border-slate-300 ' + col}">${r === 'T' ? '10' : r}${s.symbol}</button>`;
         }).join('');
-        return `<div class="grid grid-cols-13 gap-1" style="display:grid;grid-template-columns:repeat(13,minmax(0,1fr));">${btns}</div>`;
+        return `<div class="deck-suit">${btns}</div>`;
       }).join('');
       document.getElementById('adv-deck-grid').innerHTML = deckRows;
 
@@ -4332,7 +4403,7 @@
         cat: 'Posição Final • Melhor Assento da Mesa',
         dotClass: 'bg-emerald-400',
         ringClass: 'border-emerald-400 bg-emerald-950/90',
-        role: 'O assento mais lucrativo do Texas Hold'em: no pré-flop restam apenas os dois blinds, e no Flop, Turn e River você SEMPRE age por último, vendo o que todos fazem antes de decidir.'
+        role: "O assento mais lucrativo do Texas Hold'em: no pré-flop restam apenas os dois blinds, e no Flop, Turn e River você SEMPRE age por último, vendo o que todos fazem antes de decidir."
       },
       'SB': {
         fullName: 'SB — Small Blind (0.5 bb)',
@@ -4841,10 +4912,11 @@
       const navEl = document.getElementById('top-mode-nav');
       if (navEl && navEl.addEventListener) {
         navEl.addEventListener('wheel', (ev) => {
-          if (Math.abs(ev.deltaY) > Math.abs(ev.deltaX)) {
-            navEl.scrollLeft += ev.deltaY;
-            ev.preventDefault();
-          }
+          if (ev.ctrlKey || Math.abs(ev.deltaY) <= Math.abs(ev.deltaX)) return;
+          const before = navEl.scrollLeft;
+          const unit = ev.deltaMode === 1 ? 16 : ev.deltaMode === 2 ? navEl.clientWidth : 1;
+          navEl.scrollLeft += ev.deltaY * unit;
+          if (navEl.scrollLeft !== before) ev.preventDefault();
         }, { passive: false });
       }
       renderTableMap();
